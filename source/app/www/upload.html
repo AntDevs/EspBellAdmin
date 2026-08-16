@@ -1,0 +1,28 @@
+<div class="card">
+    <div class="icon-header">🔔</div>
+    <h2>Загрузка аудиофайла</h2>
+
+    <div class="info-badge" id="diskInfo">
+        Загрузка сведений о памяти...
+    </div>
+
+    <div class="form-group">
+        <label for="fileInput">Выберите MP3 файл:</label>
+        <input type="file" id="fileInput" accept=".mp3" onchange="handleFileSelect(event)">
+    </div>
+
+    <!-- Аудиоплеер для локального предпросмотра -->
+    <div class="form-group" id="audioPreviewContainer" style="display: none;">
+        <label>Прослушать перед загрузкой:</label>
+        <audio id="audioPreview" controls style="width: 100%; margin-top: 6px; border-radius: 8px; outline: none;"></audio>
+    </div>
+
+    <button onclick="startUpload()">Загрузить на ESP32</button>
+    <button onclick="logout()" class="btn-secondary">Выйти</button>
+
+    <div class="progress-bar" id="progressBar">
+        <div class="progress-fill" id="progressFill"></div>
+    </div>
+    
+    <div id="status"></div>
+</div>

@@ -1,0 +1,19 @@
+<div class="card">
+    <div class="icon-header">🔒</div>
+    <h2>Вход в систему</h2>
+    
+    <form onsubmit="handleLogin(event)">
+        <div class="form-group">
+            <label for="pwdInput">Пароль администратора:</label>
+            <input type="password" id="pwdInput" placeholder="Введите пароль" required autofocus>
+            
+            <div style="margin-top: 10px; display: flex; align-items: center; gap: 8px; font-size: 14px; color: #475569;">
+                <input type="checkbox" id="showPwdCheck" onchange="togglePassword()" style="width: auto; margin: 0; cursor: pointer;">
+                <label for="showPwdCheck" style="display: inline; margin: 0; font-weight: normal; cursor: pointer; user-select: none;">Показать пароль</label>
+            </div>
+        </div>
+        <button type="submit">Войти</button>
+    </form>
+    
+    <div id="loginStatus"></div>
+</div>
