@@ -2,8 +2,12 @@ import ssl
 import os
 import gc
 import uasyncio as asyncio
+
 from microdot import Microdot, Request, send_file
 from app.security import SecurityManager
+from app.player import AudioPlayer
+
+player = AudioPlayer(sck_pin=4, ws_pin=5, sd_pin=6)
 
 def init_server(config):
     max_size = config.get('max_file_size', 4194304)
@@ -95,6 +99,13 @@ def init_server(config):
             'allowedExtensions': config.get('allowed_extensions', ['mp3'])
         }
         return data, 200, {'Content-Type': 'application/json'}
+
+    @app.route('/api/play', methods=['POST'])
+    async def play_sound(request):
+        media_dir = config.get('media_dir', '/media')
+        target = config.get('target_filename', 'bell.mp3')
+        asyncio.create_task(player.play(f"{media_dir}/{target}"))
+        return {'status': 'playing'}, 200
 
     @app.route('/api/get-nonce')
     async def get_nonce(request):
