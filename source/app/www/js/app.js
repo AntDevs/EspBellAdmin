@@ -1,10 +1,11 @@
 let savedPassword = "";
-let savedMaxFileBytes = 0;
+let savedMaxFileBytes = 4194304; // 4 МБ
 let savedAvailableBytes = 0;
-let savedAllowedExtensions = ['mp3'];
+let savedAllowedExtensions = ['mp3', 'wav'];
 let currentAudioUrl = null;
+let convertedWavBlob = null;
 
-// Чистый SHA-256 (Web Crypto + алгоритмический фолбэк)
+// Чистый SHA-256
 async function sha256Async(message) {
     if (window.crypto && crypto.subtle && crypto.subtle.digest) {
         const msgBuffer = new TextEncoder().encode(message);
@@ -66,6 +67,56 @@ function togglePassword() {
     if (pwdInput && check) {
         pwdInput.type = check.checked ? 'text' : 'password';
     }
+}
+
+// Конвертер AudioBuffer -> WAV 16-bit PCM с лимитом размера
+function audioBufferToWavBlob(audioBuffer, maxSizeBytes) {
+    const numOfChan = audioBuffer.numberOfChannels;
+    const sampleRate = audioBuffer.sampleRate;
+    const bytesPerFrame = numOfChan * 2;
+    
+    const maxDataBytes = maxSizeBytes - 44;
+    const maxFrames = Math.floor(maxDataBytes / bytesPerFrame);
+    const framesToEncode = Math.min(audioBuffer.length, maxFrames);
+    const dataChunkSize = framesToEncode * bytesPerFrame;
+    const fileLength = dataChunkSize + 44;
+
+    const buffer = new ArrayBuffer(fileLength);
+    const view = new DataView(buffer);
+    let pos = 0;
+
+    function setUint16(data) { view.setUint16(pos, data, true); pos += 2; }
+    function setUint32(data) { view.setUint32(pos, data, true); pos += 4; }
+
+    setUint32(0x46464952); // "RIFF"
+    setUint32(fileLength - 8);
+    setUint32(0x45564157); // "WAVE"
+    setUint32(0x20746d66); // "fmt "
+    setUint32(16);         // Subchunk1Size
+    setUint16(1);          // PCM
+    setUint16(numOfChan);
+    setUint32(sampleRate);
+    setUint32(sampleRate * bytesPerFrame);
+    setUint16(bytesPerFrame);
+    setUint16(16);
+    setUint32(0x61746164); // "data"
+    setUint32(dataChunkSize);
+
+    const channels = [];
+    for (let i = 0; i < numOfChan; i++) {
+        channels.push(audioBuffer.getChannelData(i));
+    }
+
+    for (let offset = 0; offset < framesToEncode; offset++) {
+        for (let i = 0; i < numOfChan; i++) {
+            let sample = Math.max(-1, Math.min(1, channels[i][offset]));
+            sample = (0.5 + sample < 0 ? sample * 32768 : sample * 32767) | 0;
+            view.setInt16(pos, sample, true);
+            pos += 2;
+        }
+    }
+
+    return new Blob([buffer], { type: "audio/wav" });
 }
 
 async function loadView(viewName) {
@@ -132,12 +183,12 @@ async function loadSystemInfo() {
         const res = await fetch('/api/info');
         const data = await res.json();
         savedAvailableBytes = data.availableBytes || 0;
-        savedMaxFileBytes = data.maxFileBytes || 0;
-        savedAllowedExtensions = data.allowedExtensions || ['mp3'];
+        savedMaxFileBytes = data.maxFileBytes || 4194304;
+        savedAllowedExtensions = data.allowedExtensions || ['mp3', 'wav'];
 
         const freeMB = (savedAvailableBytes / (1024 * 1024)).toFixed(2);
         const maxMB = (savedMaxFileBytes / (1024 * 1024)).toFixed(2);
-        diskInfo.innerText = `💾 Доступно на диске: ${freeMB} МБ (макс. файл: ${maxMB} МБ)`;
+        diskInfo.innerText = `💾 Доступно на диске: ${freeMB} МБ (лимит конвертации: ${maxMB} МБ)`;
         
         const fileInput = document.getElementById('fileInput');
         if (fileInput && savedAllowedExtensions.length) {
@@ -148,83 +199,62 @@ async function loadSystemInfo() {
     }
 }
 
-// Вызывается при каждом выборе/смене файла
-function handleFileSelect(event) {
+async function handleFileSelect(event) {
     const file = event.target.files[0];
     const previewContainer = document.getElementById('audioPreviewContainer');
     const audioPreview = document.getElementById('audioPreview');
     const status = document.getElementById('status');
+    const previewLabel = document.getElementById('previewLabel');
 
-    // Освобождаем предыдущую ссылку из памяти
     if (currentAudioUrl) {
         URL.revokeObjectURL(currentAudioUrl);
         currentAudioUrl = null;
     }
+    convertedWavBlob = null;
 
     if (!file) {
         if (previewContainer) previewContainer.style.display = 'none';
         return;
     }
 
-    // Проверка формата
-    const fileExt = file.name.split('.').pop().toLowerCase();
-    const allowed = savedAllowedExtensions.map(e => e.toLowerCase().replace(/^\./, ''));
-    if (!allowed.includes(fileExt)) {
-        if (previewContainer) previewContainer.style.display = 'none';
-        status.innerHTML = `<span style="color: #ef4444;">❌ Недопустимый тип файла! Разрешены: .${allowed.join(', .')}</span>`;
-        return;
-    }
+    status.innerHTML = "⏳ Декодирование и конвертация файла в WAV...";
 
-    // Проверка размера
-    if (savedMaxFileBytes > 0 && file.size > savedMaxFileBytes) {
-        if (previewContainer) previewContainer.style.display = 'none';
-        const fileMB = (file.size / (1024 * 1024)).toFixed(2);
-        const limitMB = (savedMaxFileBytes / (1024 * 1024)).toFixed(2);
-        status.innerHTML = `<span style="color: #ef4444;">❌ Файл (${fileMB} МБ) превышает лимит сервера (${limitMB} МБ)!</span>`;
-        return;
-    }
+    try {
+        const arrayBuffer = await file.arrayBuffer();
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
 
-    status.innerHTML = "";
-    
-    // Создаем локальный URL из оперативной памяти ПК/телефона
-    currentAudioUrl = URL.createObjectURL(file);
-    if (audioPreview && previewContainer) {
-        audioPreview.src = currentAudioUrl;
-        previewContainer.style.display = 'block';
+        const maxBytes = savedMaxFileBytes > 0 ? savedMaxFileBytes : 4194304;
+        convertedWavBlob = audioBufferToWavBlob(audioBuffer, maxBytes);
+        
+        const sizeMB = (convertedWavBlob.size / (1024 * 1024)).toFixed(2);
+        const durationSec = (convertedWavBlob.size / (audioBuffer.sampleRate * audioBuffer.numberOfChannels * 2)).toFixed(1);
+
+        currentAudioUrl = URL.createObjectURL(convertedWavBlob);
+        if (audioPreview && previewContainer) {
+            audioPreview.src = currentAudioUrl;
+            previewContainer.style.display = 'block';
+        }
+
+        if (previewLabel) {
+            previewLabel.innerText = `Предпросмотр WAV (${durationSec} сек, ${sizeMB} МБ):`;
+        }
+
+        status.innerHTML = `<span style="color: #10b981;">✅ Конвертировано в WAV (${durationSec} сек, ${sizeMB} МБ)</span>`;
+
+    } catch (e) {
+        status.innerHTML = `<span style="color: #ef4444;">❌ Ошибка конвертации аудио: ${e.message}</span>`;
+        if (previewContainer) previewContainer.style.display = 'none';
     }
 }
 
 async function startUpload() {
-    const fileInput = document.getElementById('fileInput');
     const status = document.getElementById('status');
     const progressBar = document.getElementById('progressBar');
     const progressFill = document.getElementById('progressFill');
 
-    if (!fileInput.files.length) {
-        status.innerHTML = `<span style="color: #ef4444;">❌ Выберите файл!</span>`;
-        return;
-    }
-
-    const file = fileInput.files[0];
-
-    const fileExt = file.name.split('.').pop().toLowerCase();
-    const allowed = savedAllowedExtensions.map(e => e.toLowerCase().replace(/^\./, ''));
-    if (!allowed.includes(fileExt)) {
-        status.innerHTML = `<span style="color: #ef4444;">❌ Недопустимый тип файла! Разрешены: .${allowed.join(', .')}</span>`;
-        return;
-    }
-
-    if (savedMaxFileBytes > 0 && file.size > savedMaxFileBytes) {
-        const fileMB = (file.size / (1024 * 1024)).toFixed(2);
-        const limitMB = (savedMaxFileBytes / (1024 * 1024)).toFixed(2);
-        status.innerHTML = `<span style="color: #ef4444;">❌ Файл (${fileMB} МБ) превышает лимит сервера (${limitMB} МБ)!</span>`;
-        return;
-    }
-
-    if (savedAvailableBytes > 0 && file.size > savedAvailableBytes) {
-        const fileMB = (file.size / (1024 * 1024)).toFixed(2);
-        const freeMB = (savedAvailableBytes / (1024 * 1024)).toFixed(2);
-        status.innerHTML = `<span style="color: #ef4444;">❌ Файл (${fileMB} МБ) больше свободного места на диске (${freeMB} МБ)!</span>`;
+    if (!convertedWavBlob) {
+        status.innerHTML = `<span style="color: #ef4444;">❌ Выберите корректный аудиофайл!</span>`;
         return;
     }
 
@@ -237,7 +267,7 @@ async function startUpload() {
 
         const authHash = await sha256Async(savedPassword + nonce);
 
-        status.innerText = "⏳ Загрузка файла...";
+        status.innerText = "⏳ Загрузка WAV файла на ESP32...";
         progressBar.style.display = "block";
         progressFill.style.width = "0%";
 
@@ -245,7 +275,7 @@ async function startUpload() {
         xhr.open('POST', '/upload', true);
         xhr.setRequestHeader('X-Auth-Nonce', nonce);
         xhr.setRequestHeader('X-Auth-Hash', authHash);
-        xhr.setRequestHeader('X-File-Name', encodeURIComponent(file.name));
+        xhr.setRequestHeader('X-File-Name', 'bell.wav');
 
         xhr.upload.onprogress = function(e) {
             if (e.lengthComputable) {
@@ -266,13 +296,68 @@ async function startUpload() {
         };
 
         xhr.onerror = function() {
-            status.innerHTML = `<span style="color: #ef4444;">❌ Сбой сети или файл не подходит по условиям</span>`;
+            status.innerHTML = `<span style="color: #ef4444;">❌ Сбой сети при передаче файла</span>`;
         };
 
-        xhr.send(file);
+        xhr.send(convertedWavBlob);
 
     } catch (err) {
         status.innerHTML = `<span style="color: #ef4444;">❌ Ошибка: ${err.message}</span>`;
+    }
+}
+
+async function playOnEsp32() {
+    const status = document.getElementById('status');
+    status.innerText = "🔑 Подготовка авторизации...";
+
+    try {
+        const nonceResp = await fetch('/api/get-nonce');
+        const nonceData = await nonceResp.json();
+        const nonce = nonceData.nonce;
+
+        const authHash = await sha256Async(savedPassword + nonce);
+
+        const resp = await fetch('/api/play', {
+            method: 'POST',
+            headers: {
+                'X-Auth-Nonce': nonce,
+                'X-Auth-Hash': authHash
+            }
+        });
+
+        const result = await resp.json();
+        if (resp.ok) {
+            status.innerHTML = `<span style="color: #10b981;">▶ Воспроизведение заведено на ESP32</span>`;
+        } else {
+            status.innerHTML = `<span style="color: #ef4444;">❌ ${result.error || 'Ошибка воспроизведения'}</span>`;
+        }
+    } catch (err) {
+        status.innerHTML = `<span style="color: #ef4444;">❌ Сбой соединения с ESP32</span>`;
+    }
+}
+
+async function stopOnEsp32() {
+    const status = document.getElementById('status');
+    try {
+        const nonceResp = await fetch('/api/get-nonce');
+        const nonceData = await nonceResp.json();
+        const nonce = nonceData.nonce;
+
+        const authHash = await sha256Async(savedPassword + nonce);
+
+        const resp = await fetch('/api/stop', {
+            method: 'POST',
+            headers: {
+                'X-Auth-Nonce': nonce,
+                'X-Auth-Hash': authHash
+            }
+        });
+
+        if (resp.ok) {
+            status.innerHTML = `<span style="color: #475569;">⏹ Воспроизведение остановлено</span>`;
+        }
+    } catch (err) {
+        status.innerHTML = `<span style="color: #ef4444;">❌ Сбой соединения с ESP32</span>`;
     }
 }
 
@@ -282,6 +367,7 @@ function logout() {
         URL.revokeObjectURL(currentAudioUrl);
         currentAudioUrl = null;
     }
+    convertedWavBlob = null;
     loadView('login.html');
 }
 

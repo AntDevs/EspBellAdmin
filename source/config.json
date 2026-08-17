@@ -2,24 +2,25 @@
   "wifi_ssid": "MyHome_555",
   "wifi_password": "anton123",
   "upload_password": "admin",
+  "ap_ssid": "ESP32-Config",
+  "ap_password": "anton123",
   "encrypted_fields": [
-      "wifi_password",
-      "upload_password",
-      "ap_password"
-    ],  
+    "wifi_password",
+    "upload_password",
+    "ap_password"
+  ],
   "allowed_extensions": [
-    "mp3"
-    ],
+    "mp3",
+    "wav"
+  ],
   "hostname": "bell555",
   "cert_path": "resources/cert.crt",
   "key_path": "resources/cert.key",
   "html_index_path": "app/www/index.html",
   "media_dir": "/media",
-  "target_filename": "bell.mp3",
+  "target_filename": "bell.wav",
   "max_file_size": 4194304,
   "server_host": "0.0.0.0",
   "server_port": 443,
-  "ap_ssid": "ESP32-Config",
-  "ap_password": "anton123",
   "ap_ip": "192.168.4.1"
 }

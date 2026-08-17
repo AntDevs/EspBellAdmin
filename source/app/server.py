@@ -96,16 +96,39 @@ def init_server(config):
         data = {
             'availableBytes': get_available_space(),
             'maxFileBytes': max_size,
-            'allowedExtensions': config.get('allowed_extensions', ['mp3'])
+            'allowedExtensions': config.get('allowed_extensions', ['mp3', 'wav']),
+            'isPlaying': player.is_playing
         }
         return data, 200, {'Content-Type': 'application/json'}
 
     @app.route('/api/play', methods=['POST'])
     async def play_sound(request):
+        required_password = config.get('upload_password', '')
+        is_auth_ok, auth_msg = security.verify_upload_auth(request, required_password)
+        if not is_auth_ok:
+            return {'error': auth_msg}, 401, {'Content-Type': 'application/json'}
+
         media_dir = config.get('media_dir', '/media')
-        target = config.get('target_filename', 'bell.mp3')
-        asyncio.create_task(player.play(f"{media_dir}/{target}"))
-        return {'status': 'playing'}, 200
+        target = config.get('target_filename', 'bell.wav')
+        filepath = f"{media_dir}/{target}"
+
+        try:
+            os.stat(filepath)
+        except OSError:
+            return {'error': 'Файл на ESP32 не найден! Сначала загрузите аудио.'}, 404, {'Content-Type': 'application/json'}
+
+        asyncio.create_task(player.play(filepath))
+        return {'status': 'playing'}, 200, {'Content-Type': 'application/json'}
+
+    @app.route('/api/stop', methods=['POST'])
+    async def stop_sound(request):
+        required_password = config.get('upload_password', '')
+        is_auth_ok, auth_msg = security.verify_upload_auth(request, required_password)
+        if not is_auth_ok:
+            return {'error': auth_msg}, 401, {'Content-Type': 'application/json'}
+
+        player.stop()
+        return {'status': 'stopped'}, 200, {'Content-Type': 'application/json'}
 
     @app.route('/api/get-nonce')
     async def get_nonce(request):
@@ -132,9 +155,8 @@ def init_server(config):
             print(f"[AUTH ERROR] {auth_msg}")
             return f"Ошибка авторизации: {auth_msg}", 401
 
-        # Серверная проверка расширения из заголовка X-File-Name
         original_filename = request.headers.get('X-File-Name', '')
-        allowed_exts = [ext.lower().lstrip('.') for ext in config.get('allowed_extensions', ['mp3'])]
+        allowed_exts = [ext.lower().lstrip('.') for ext in config.get('allowed_extensions', ['mp3', 'wav'])]
 
         if original_filename:
             file_ext = original_filename.split('.')[-1].lower() if '.' in original_filename else ''
@@ -156,12 +178,12 @@ def init_server(config):
             return 'Ошибка: Недостаточно места на диске!', 400
 
         media_dir = config.get('media_dir', '/media')
-        target_filename = config.get('target_filename', 'bell.mp3')
+        target_filename = config.get('target_filename', 'bell.wav')
         filepath = f"{media_dir}/{target_filename}"
         print(f"[UPLOAD ROUTE] Запись потока в {filepath} ({content_length} B)...")
 
         remaining = content_length
-        chunk_size = 2048
+        chunk_size = 4096
         saved_bytes = 0
 
         try:
@@ -179,7 +201,8 @@ def init_server(config):
                     f.write(chunk)
                     saved_bytes += len(chunk)
                     remaining -= len(chunk)
-                    await asyncio.sleep_ms(0)
+                    # Микрозадержка для дампа сокета Wi-Fi и предотвращения ECONNRESET (-104)
+                    await asyncio.sleep_ms(1)
 
             print(f"[UPLOAD SUCCESS] Сохранено {saved_bytes} B в {filepath}")
             return f'Файл успешно сохранен как {target_filename}!', 200
