@@ -10,29 +10,38 @@ except ImportError:
     mp3dec = None
 
 class AudioPlayer:
-    def __init__(self, sck_pin=4, ws_pin=5, sd_pin=6, i2s_id=0):
-        self.sck_pin = sck_pin
-        self.ws_pin = ws_pin
-        self.sd_pin = sd_pin
+    def __init__(self, bck_pin15=15, lck_pin16=16, din_pin17=17, i2s_id=0):
+        """
+        Переменные сопоставлены с маркировкой ЦАП и чистыми GPIO платы расширения:
+        :param bck_pin15: Пин BCK (Bit Clock) -> IO15 на Expansion Board
+        :param lck_pin16: Пин LCK/LRCK (Word Select) -> IO16 на Expansion Board
+        :param din_pin17: Пин DIN (Data Input) -> IO17 на Expansion Board
+        """
+        self.bck_pin15 = bck_pin15
+        self.lck_pin16 = lck_pin16
+        self.din_pin17 = din_pin17
         self.i2s_id = i2s_id
         self.i2s = None
         self.is_playing = False
         self._stop = False
 
-    def _init_i2s(self, rate=44100, bits=16, channels=2):
+    def _init_i2s(self, rate=44100, bits=32, channels=2):
         if self.i2s:
             try:
                 self.i2s.deinit()
             except Exception:
                 pass
         fmt = I2S.STEREO if channels == 2 else I2S.MONO
+
+        # Принудительно зафиксировано bits=32 для выдачи 64 тактов BCLK на фрейм.
+        # Это обеспечивает захват частоты внутренним PLL ЦАПа PCM5102A и убирает шумы.
         self.i2s = I2S(
             self.i2s_id,
-            sck=Pin(self.sck_pin),
-            ws=Pin(self.ws_pin),
-            sd=Pin(self.sd_pin),
+            sck=Pin(self.bck_pin15),
+            ws=Pin(self.lck_pin16),
+            sd=Pin(self.din_pin17),
             mode=I2S.TX,
-            bits=bits,
+            bits=32,
             format=fmt,
             rate=rate,
             ibuf=8192
@@ -50,10 +59,9 @@ class AudioPlayer:
 
         channels = struct.unpack('<H', header[22:24])[0]
         rate = struct.unpack('<I', header[24:28])[0]
-        bits = struct.unpack('<H', header[34:36])[0]
 
-        print(f"[AUDIO] Запуск WAV: {rate} Hz, {bits} bit, channels={channels}")
-        self._init_i2s(rate=rate, bits=bits, channels=channels)
+        print(f"[AUDIO] Запуск WAV: {rate} Hz, channels={channels}")
+        self._init_i2s(rate=rate, bits=32, channels=channels)
 
         buf = bytearray(2048)
         while not self._stop:
@@ -72,7 +80,7 @@ class AudioPlayer:
 
         decoder = mp3dec.Decoder()
         pcm_buf = bytearray(4096)
-        self._init_i2s(rate=44100, bits=16, channels=2)
+        self._init_i2s(rate=44100, bits=32, channels=2)
 
         while not self._stop:
             chunk = f.read(1024)

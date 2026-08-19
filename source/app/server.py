@@ -7,7 +7,7 @@ from microdot import Microdot, Request, send_file
 from app.security import SecurityManager
 from app.player import AudioPlayer
 
-player = AudioPlayer(sck_pin=4, ws_pin=5, sd_pin=6)
+player = AudioPlayer(bck_pin15=15, lck_pin16=16, din_pin17=17)
 
 def init_server(config):
     max_size = config.get('max_file_size', 4194304)
