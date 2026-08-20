@@ -65,6 +65,7 @@ def setup_network(config):
     except Exception:
         pass
 
+    time.sleep(2)
     sta_ssid = config.get('wifi_ssid', '')
     raw_sta_pass = config.get('wifi_password', '')
     sta_pass = security_mgr.decrypt_str(raw_sta_pass)
