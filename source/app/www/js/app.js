@@ -69,11 +69,27 @@ function togglePassword() {
     }
 }
 
-// Конвертер AudioBuffer -> WAV 16-bit PCM с лимитом размера
+// Передискретизация до 22050 Гц и микширование в Mono (1 канал)
+async function optimizeAudioBuffer(audioBuffer, targetSampleRate = 22050) {
+    const offlineCtx = new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(
+        1, // Принудительно 1 канал (Mono)
+        Math.ceil(audioBuffer.duration * targetSampleRate),
+        targetSampleRate
+    );
+
+    const source = offlineCtx.createBufferSource();
+    source.buffer = audioBuffer;
+    source.connect(offlineCtx.destination);
+    source.start(0);
+
+    return await offlineCtx.startRendering();
+}
+
+// Оптимизированный конвертер AudioBuffer -> 16-bit PCM WAV (Mono)
 function audioBufferToWavBlob(audioBuffer, maxSizeBytes) {
-    const numOfChan = audioBuffer.numberOfChannels;
-    const sampleRate = audioBuffer.sampleRate;
-    const bytesPerFrame = numOfChan * 2;
+    const numOfChan = audioBuffer.numberOfChannels; // 1 (Mono)
+    const sampleRate = audioBuffer.sampleRate;       // 22050 Гц
+    const bytesPerFrame = numOfChan * 2;             // 2 байта на отсчет (16 bit)
     
     const maxDataBytes = maxSizeBytes - 44;
     const maxFrames = Math.floor(maxDataBytes / bytesPerFrame);
@@ -98,22 +114,17 @@ function audioBufferToWavBlob(audioBuffer, maxSizeBytes) {
     setUint32(sampleRate);
     setUint32(sampleRate * bytesPerFrame);
     setUint16(bytesPerFrame);
-    setUint16(16);
+    setUint16(16);         // 16-bit
     setUint32(0x61746164); // "data"
     setUint32(dataChunkSize);
 
-    const channels = [];
-    for (let i = 0; i < numOfChan; i++) {
-        channels.push(audioBuffer.getChannelData(i));
-    }
+    const channelData = audioBuffer.getChannelData(0);
 
     for (let offset = 0; offset < framesToEncode; offset++) {
-        for (let i = 0; i < numOfChan; i++) {
-            let sample = Math.max(-1, Math.min(1, channels[i][offset]));
-            sample = (0.5 + sample < 0 ? sample * 32768 : sample * 32767) | 0;
-            view.setInt16(pos, sample, true);
-            pos += 2;
-        }
+        let sample = Math.max(-1, Math.min(1, channelData[offset]));
+        sample = (0.5 + sample < 0 ? sample * 32768 : sample * 32767) | 0;
+        view.setInt16(pos, sample, true);
+        pos += 2;
     }
 
     return new Blob([buffer], { type: "audio/wav" });
@@ -199,6 +210,7 @@ async function loadSystemInfo() {
     }
 }
 
+// Выбор и оптимизированная конвертация аудиофайла
 async function handleFileSelect(event) {
     const file = event.target.files[0];
     const previewContainer = document.getElementById('audioPreviewContainer');
@@ -217,18 +229,21 @@ async function handleFileSelect(event) {
         return;
     }
 
-    status.innerHTML = "⏳ Декодирование и конвертация файла в WAV...";
+    status.innerHTML = "⏳ Декодирование, микширование в Mono и ресемплинг до 22.05 кГц...";
 
     try {
         const arrayBuffer = await file.arrayBuffer();
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+        const rawAudioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+
+        // Конвертация в Mono (1 канал) и 22050 Гц для 4x экономии места
+        const optimizedBuffer = await optimizeAudioBuffer(rawAudioBuffer, 22050);
 
         const maxBytes = savedMaxFileBytes > 0 ? savedMaxFileBytes : 4194304;
-        convertedWavBlob = audioBufferToWavBlob(audioBuffer, maxBytes);
+        convertedWavBlob = audioBufferToWavBlob(optimizedBuffer, maxBytes);
         
         const sizeMB = (convertedWavBlob.size / (1024 * 1024)).toFixed(2);
-        const durationSec = (convertedWavBlob.size / (audioBuffer.sampleRate * audioBuffer.numberOfChannels * 2)).toFixed(1);
+        const durationSec = (convertedWavBlob.size / (optimizedBuffer.sampleRate * optimizedBuffer.numberOfChannels * 2)).toFixed(1);
 
         currentAudioUrl = URL.createObjectURL(convertedWavBlob);
         if (audioPreview && previewContainer) {
@@ -237,10 +252,10 @@ async function handleFileSelect(event) {
         }
 
         if (previewLabel) {
-            previewLabel.innerText = `Предпросмотр WAV (${durationSec} сек, ${sizeMB} МБ):`;
+            previewLabel.innerText = `Предпросмотр WAV Mono (${durationSec} сек, ${sizeMB} МБ):`;
         }
 
-        status.innerHTML = `<span style="color: #10b981;">✅ Конвертировано в WAV (${durationSec} сек, ${sizeMB} МБ)</span>`;
+        status.innerHTML = `<span style="color: #10b981;">✅ Конвертировано в WAV Mono (${durationSec} сек, ${sizeMB} МБ)</span>`;
 
     } catch (e) {
         status.innerHTML = `<span style="color: #ef4444;">❌ Ошибка конвертации аудио: ${e.message}</span>`;
