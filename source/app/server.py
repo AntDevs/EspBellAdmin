@@ -1,15 +1,21 @@
 import ssl
 import os
 import gc
+import logging
 import uasyncio as asyncio
 
 from microdot import Microdot, Request, send_file
 from app.security import SecurityManager
 from app.player import AudioPlayer
 
+# Логгер модуля веб-сервера
+log = logging.getLogger("SERVER")
+
+# Единый экземпляр проигрывателя для работы с UI
 player = AudioPlayer(bck_pin15=15, lck_pin16=16, din_pin17=17)
 
 def init_server(config):
+    """Инициализация роутов и настроек веб-сервера Microdot."""
     max_size = config.get('max_file_size', 4194304)
     Request.max_content_length = max_size
     Request.max_body_size = max_size
@@ -44,16 +50,16 @@ def init_server(config):
         media_dir = config.get('media_dir', '/media')
         try:
             files = os.listdir(media_dir)
-            print(f"[MEDIA] Удаление файлов из {media_dir}: {files}")
+            log.info(f"Удаление файлов из {media_dir}: {files}")
             for f in files:
                 os.remove(f"{media_dir}/{f}")
         except Exception as e:
-            print("[MEDIA ERROR] Ошибка очистки:", e)
+            log.error(f"Ошибка очистки media: {e}")
 
     @app.before_request
     async def log_request(request):
         gc.collect()
-        print(f"[HTTP IN] {request.method} {request.path} | Free RAM: {gc.mem_free()} B")
+        log.info(f"{request.method} {request.path} | Free RAM: {gc.mem_free()} B")
 
     @app.after_request
     async def cleanup_connection(request, response):
@@ -63,17 +69,17 @@ def init_server(config):
 
     @app.errorhandler(413)
     async def payload_too_large(request):
-        print(f"[ERROR 413] Превышен лимит {max_size} байт")
+        log.error(f"Превышен лимит размера файла {max_size} байт")
         return f'Ошибка: Файл превышает максимальный размер ({max_size // (1024*1024)} МБ)!', 413
 
     @app.errorhandler(500)
     async def internal_error(exception):
-        print(f"[ERROR 500] Внутренняя ошибка сервера: {exception}")
+        log.error(f"Внутренняя ошибка сервера: {exception}")
         return f'Внутренняя ошибка сервера: {exception}', 500
 
     @app.errorhandler(Exception)
     async def generic_error(request, exception):
-        print(f"[SERVER WARNING] Перехвачено исключение: {type(exception).__name__} -> {exception}")
+        log.warning(f"Перехвачено исключение: {type(exception).__name__} -> {exception}")
         gc.collect()
         return 'Ошибка соединения с сервером', 500
 
@@ -103,6 +109,10 @@ def init_server(config):
 
     @app.route('/api/play', methods=['POST'])
     async def play_sound(request):
+        """
+        Предварительное прослушивание аудио из UI.
+        Воспроизводится строго 1 раз, «как есть», без лимитов времени и без затухания fade-out.
+        """
         required_password = config.get('upload_password', '')
         is_auth_ok, auth_msg = security.verify_upload_auth(request, required_password)
         if not is_auth_ok:
@@ -117,16 +127,26 @@ def init_server(config):
         except OSError:
             return {'error': 'Файл на ESP32 не найден! Сначала загрузите аудио.'}, 404, {'Content-Type': 'application/json'}
 
-        asyncio.create_task(player.play(filepath))
+        log.info("[UI PLAY] Ознакомительное воспроизведение: 1 повтор, без затухания и без ограничений по времени.")
+
+        # Вызов проигрывателя с нулевыми лимитами (чистое прослушивание)
+        asyncio.create_task(player.play(
+            filepath,
+            repeat_count=1,
+            max_duration_sec=0,
+            fade_out_ms=0
+        ))
         return {'status': 'playing'}, 200, {'Content-Type': 'application/json'}
 
     @app.route('/api/stop', methods=['POST'])
     async def stop_sound(request):
+        """Остановка воспроизведения по запросу из веб-панели."""
         required_password = config.get('upload_password', '')
         is_auth_ok, auth_msg = security.verify_upload_auth(request, required_password)
         if not is_auth_ok:
             return {'error': auth_msg}, 401, {'Content-Type': 'application/json'}
 
+        log.info("[UI STOP] Получен сигнал остановки воспроизведения из веб-интерфейса.")
         player.stop()
         return {'status': 'stopped'}, 200, {'Content-Type': 'application/json'}
 
@@ -146,13 +166,13 @@ def init_server(config):
 
     @app.route('/upload', methods=['POST'])
     async def upload(request):
-        print("[UPLOAD ROUTE] Обработчик /upload вызван")
+        log.info("Обработчик /upload вызван")
 
         required_password = config.get('upload_password', '')
         is_auth_ok, auth_msg = security.verify_upload_auth(request, required_password)
 
         if not is_auth_ok:
-            print(f"[AUTH ERROR] {auth_msg}")
+            log.warning(f"Ошибка авторизации загрузки: {auth_msg}")
             return f"Ошибка авторизации: {auth_msg}", 401
 
         original_filename = request.headers.get('X-File-Name', '')
@@ -161,26 +181,26 @@ def init_server(config):
         if original_filename:
             file_ext = original_filename.split('.')[-1].lower() if '.' in original_filename else ''
             if file_ext not in allowed_exts:
-                print(f"[UPLOAD ERROR] Запрещенный тип файла: .{file_ext}")
+                log.error(f"Запрещенный тип файла: .{file_ext}")
                 return f"Ошибка: Запрещенный тип файла (разрешены: {', '.join(allowed_exts)})!", 400
 
         content_length = int(request.headers.get('Content-Length', 0))
         
         if content_length > max_size:
-            print(f"[UPLOAD ERROR] Заявленный размер {content_length} B > {max_size} B")
+            log.error(f"Заявленный размер {content_length} B > {max_size} B")
             return f'Ошибка: Файл превышает разрешенный лимит {max_size // (1024*1024)} МБ!', 400
 
         clear_media()
         free_bytes = get_free_space()
 
         if content_length > free_bytes:
-            print(f"[UPLOAD ERROR] Недостаточно места ({content_length} B > {free_bytes} B)")
+            log.error(f"Недостаточно места на диске ({content_length} B > {free_bytes} B)")
             return 'Ошибка: Недостаточно места на диске!', 400
 
         media_dir = config.get('media_dir', '/media')
         target_filename = config.get('target_filename', 'bell.wav')
         filepath = f"{media_dir}/{target_filename}"
-        print(f"[UPLOAD ROUTE] Запись потока в {filepath} ({content_length} B)...")
+        log.info(f"Запись потока в {filepath} ({content_length} B)...")
 
         remaining = content_length
         chunk_size = 4096
@@ -192,7 +212,7 @@ def init_server(config):
                     to_read = min(chunk_size, remaining)
                     chunk = await request.stream.read(to_read)
                     if not chunk:
-                        print(f"[UPLOAD WARNING] Поток прерван на {saved_bytes} B")
+                        log.warning(f"Поток прерван на {saved_bytes} B")
                         break
                     
                     if isinstance(chunk, str):
@@ -201,14 +221,13 @@ def init_server(config):
                     f.write(chunk)
                     saved_bytes += len(chunk)
                     remaining -= len(chunk)
-                    # Микрозадержка для дампа сокета Wi-Fi и предотвращения ECONNRESET (-104)
                     await asyncio.sleep_ms(1)
 
-            print(f"[UPLOAD SUCCESS] Сохранено {saved_bytes} B в {filepath}")
+            log.info(f"Файл успешно сохранен ({saved_bytes} B) в {filepath}")
             return f'Файл успешно сохранен как {target_filename}!', 200
 
         except OSError as e:
-            print(f"[UPLOAD ERROR] Сбой передачи сокета ({e})")
+            log.error(f"Сбой передачи сокета: {e}")
             clear_media()
             return 'Ошибка передачи файла', 500
 
@@ -225,12 +244,12 @@ def start_server(app, host, port, cert_file='resources/cert.crt', key_file='reso
         try:
             ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
             ssl_context.load_cert_chain(cert_file, key_file)
-            print(f"[SSL] Запуск Microdot HTTPS на {host}:{port}...")
+            log.info(f"Запуск Microdot HTTPS на {host}:{port}...")
             app.run(host=host, port=port, ssl=ssl_context)
             return
         except Exception as e:
-            print(f"[SSL ERROR] Ошибка загрузки SSL из {cert_file} ({e}). Переключение на HTTP (порт 80)...")
+            log.error(f"Ошибка загрузки SSL из {cert_file} ({e}). Переключение на HTTP (порт 80)...")
             port = 80
 
-    print(f"[SERVER] Запуск Microdot HTTP на {host}:{port}...")
+    log.info(f"Запуск Microdot HTTP на {host}:{port}...")
     app.run(host=host, port=port)
