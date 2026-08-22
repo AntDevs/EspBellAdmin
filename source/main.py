@@ -13,6 +13,7 @@ import io
 from logger import setup_logging
 from app.security import SecurityManager
 from hal.power_manager import power_mgr
+from hal.indicator import set_moonlight_color
 
 # Инициализация глобального системного логгера для главного файла управления
 setup_logging(logging.INFO)
@@ -104,7 +105,8 @@ def load_config():
             "max_file_size": 4194304,
             "server_host": "0.0.0.0",
             "server_port": 80,
-            "ap_ip": "192.168.4.1"
+            "ap_ip": "192.168.4.1",
+            "led_pin": 48
         }
         log.info("[TRACE EXIT] load_config -> fallback config")
         return fallback_cfg
@@ -294,6 +296,10 @@ def main():
         log.info(f"Доступ к панели управления по имени: {proto}://{hostname} или {proto}://{hostname}.local")
     else:
         log.info(f"Подключитесь к Wi-Fi '{config.get('ap_ssid', 'ESP32-Config')}' и откройте адрес: {proto}://{ip}")
+
+    # Включение светодиодной индикации готовности сервера к обработке запросов
+    led_pin = config.get('led_pin', 48)
+    set_moonlight_color(pin_num=led_pin)
 
     # Старт основного бесконечного цикла веб-сервера
     start_server(app, host, port, cert_file=cert_path, key_file=key_path)
