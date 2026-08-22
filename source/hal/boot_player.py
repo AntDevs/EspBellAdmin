@@ -1,21 +1,14 @@
 import os
 import time
-import struct
-import array
 import machine
 from machine import I2S, Pin
 import logging
+import uasyncio as asyncio
 
-from hal.chip_monitor import ChipMonitor, EVENT_BOOT_REASON, EVENT_LOW_MEMORY
-from logger import log_exception
-from hal.audio_utils import save_position_to_config, parse_wav_header, write_pcm_with_gain
+from hal.chip_monitor import ChipMonitor
+from hal.audio_utils import save_position_to_config, stream_wav, stream_mp3
 
 log = logging.getLogger("BOOT_AUDIO")
-
-try:
-    import mp3dec
-except ImportError:
-    mp3dec = None
 
 class StandaloneBootPlayer:
     def __init__(self, bck_pin=15, ws_pin=16, sd_pin=17, i2s_id=0, config=None):
@@ -31,7 +24,7 @@ class StandaloneBootPlayer:
         log.info("[TRACE EXIT] StandaloneBootPlayer.__init__")
 
     def _init_i2s(self, rate=44100, bits=16, channels=2):
-        """Быстрая и чистая инициализация I2S без разрыва DMA потока."""
+        """Инициализация I2S для автономного воспроизведения."""
         log.info("[TRACE ENTER] StandaloneBootPlayer._init_i2s(rate=%s, bits=%s, channels=%s)", rate, bits, channels)
         if self.i2s:
             try:
@@ -41,7 +34,6 @@ class StandaloneBootPlayer:
             self.i2s = None
 
         fmt = I2S.STEREO if channels == 2 else I2S.MONO
-
         log.info(f"Конфигурирование I2S (Rate={rate}Hz, Bits={bits}, Format={fmt})...")
         
         self.i2s = I2S(
@@ -62,6 +54,7 @@ class StandaloneBootPlayer:
         except Exception:
             pass
         log.info("[TRACE EXIT] StandaloneBootPlayer._init_i2s")
+        return self.i2s
 
     def deinit(self):
         log.info("[TRACE ENTER] StandaloneBootPlayer.deinit()")
@@ -73,148 +66,10 @@ class StandaloneBootPlayer:
             self.i2s = None
         log.info("[TRACE EXIT] StandaloneBootPlayer.deinit")
 
-    def _write_pcm_with_gain(self, buf, num_bytes, gain):
-        log.debug("[TRACE ENTER] StandaloneBootPlayer._write_pcm_with_gain(num_bytes=%s, gain=%s)", num_bytes, gain)
-        write_pcm_with_gain(self.i2s, buf, num_bytes, gain)
-        log.debug("[TRACE EXIT] StandaloneBootPlayer._write_pcm_with_gain")
-
     def _save_position_to_config(self, pos_bytes, pos_sec=0.0):
         log.info("[TRACE ENTER] StandaloneBootPlayer._save_position_to_config(pos_bytes=%s, pos_sec=%s)", pos_bytes, pos_sec)
         save_position_to_config(pos_bytes, pos_sec, self.config)
         log.info("[TRACE EXIT] StandaloneBootPlayer._save_position_to_config")
-
-    def _play_wav_sync(self, f, start_ticks, max_ms, fade_out_ms, is_last_repeat, start_pos_bytes=0, start_pos_sec=0.0):
-        log.info("[TRACE ENTER] StandaloneBootPlayer._play_wav_sync(start_pos_bytes=%s, start_pos_sec=%s)", start_pos_bytes, start_pos_sec)
-        wav_fmt = parse_wav_header(f)
-        if not wav_fmt:
-            log.error("Файл не является валидным WAV!")
-            log.info("[TRACE EXIT] StandaloneBootPlayer._play_wav_sync -> False")
-            return False
-
-        channels, rate, bits, data_size, data_offset = wav_fmt
-        log.info(f"Параметры WAV: {rate} Hz, {bits} bit, channels={channels}, data={data_size} B")
-
-        bytes_per_sec = rate * channels * (bits // 8) if (rate and channels and bits) else 176400
-        frame_align = channels * (bits // 8)
-        self._init_i2s(rate=rate, bits=bits, channels=channels)
-        log.info("Начало передачи PCM аудиопотока в шину I2S...")
-
-        # Вычисление позиционирования
-        if start_pos_bytes == 0 and start_pos_sec > 0:
-            start_pos_bytes = data_offset + int(start_pos_sec * bytes_per_sec)
-
-        if start_pos_bytes > data_offset and start_pos_bytes < (data_offset + data_size):
-            seek_pos = data_offset + ((start_pos_bytes - data_offset) // frame_align) * frame_align
-            f.seek(seek_pos)
-            log.info(f"Возобновление WAV (boot) с позиции {seek_pos} B / {start_pos_sec} сек (data offset: {data_offset} B)")
-
-        bytes_per_ms = bytes_per_sec / 1000.0
-        buf = bytearray(4096)
-        bytes_read_total = f.tell() - data_offset
-
-        while True:
-            elapsed_ms = time.ticks_diff(time.ticks_ms(), start_ticks)
-
-            if max_ms > 0 and elapsed_ms >= max_ms:
-                log.info(f"Достигнут лимит времени воспроизведения ({max_ms} ms)")
-                break
-
-            self.current_pos_bytes = f.tell()
-            self.current_pos_sec = max(0.0, (self.current_pos_bytes - data_offset) / bytes_per_sec)
-
-            num_read = f.readinto(buf)
-            if num_read == 0:
-                self.current_pos_bytes = 0
-                self.current_pos_sec = 0.0
-                break
-
-            bytes_read_total += num_read
-            gain = 1.0
-
-            if max_ms > 0 and fade_out_ms > 0:
-                rem_ms = max_ms - elapsed_ms
-                if rem_ms <= fade_out_ms:
-                    gain = max(0.0, rem_ms / fade_out_ms)
-            elif is_last_repeat and fade_out_ms > 0 and data_size > 0:
-                bytes_left = data_size - bytes_read_total
-                if bytes_left <= 0:
-                    gain = 0.0
-                else:
-                    ms_left = bytes_left / bytes_per_ms
-                    if ms_left <= fade_out_ms:
-                        gain = max(0.0, ms_left / fade_out_ms)
-
-            self._write_pcm_with_gain(buf, num_read, gain)
-
-        log.info("[TRACE EXIT] StandaloneBootPlayer._play_wav_sync -> True")
-        return True
-
-    def _play_mp3_sync(self, f, file_size, start_ticks, max_ms, fade_out_ms, is_last_repeat, start_pos_bytes=0, start_pos_sec=0.0):
-        log.info("[TRACE ENTER] StandaloneBootPlayer._play_mp3_sync(start_pos_bytes=%s, start_pos_sec=%s)", start_pos_bytes, start_pos_sec)
-        if not mp3dec:
-            log.error("C-модуль mp3dec не найден в прошивке!")
-            log.info("[TRACE EXIT] StandaloneBootPlayer._play_mp3_sync -> False")
-            return False
-
-        log.info(f"Параметры MP3 файла: размер {file_size} B")
-        bytes_per_sec = 16000
-
-        if start_pos_bytes == 0 and start_pos_sec > 0:
-            start_pos_bytes = int(start_pos_sec * bytes_per_sec)
-
-        if start_pos_bytes > 0 and start_pos_bytes < file_size:
-            f.seek(start_pos_bytes)
-            log.info(f"Возобновление MP3 (boot) с позиции {start_pos_bytes} B / {start_pos_sec} сек")
-
-        self._init_i2s(rate=44100, bits=16, channels=2)
-        log.info("Начало декодирования и передачи PCM аудиопотока в I2S...")
-        
-        decoder = mp3dec.Decoder()
-        pcm_buf = bytearray(4096)
-        bytes_read_from_file = f.tell()
-
-        while True:
-            elapsed_ms = time.ticks_diff(time.ticks_ms(), start_ticks)
-
-            if max_ms > 0 and elapsed_ms >= max_ms:
-                log.info(f"Достигнут лимит времени воспроизведения ({max_ms} ms)")
-                break
-
-            self.current_pos_bytes = f.tell()
-            self.current_pos_sec = self.current_pos_bytes / bytes_per_sec
-
-            chunk = f.read(1024)
-            if not chunk:
-                self.current_pos_bytes = 0
-                self.current_pos_sec = 0.0
-                break
-
-            bytes_read_from_file += len(chunk)
-            decoder.write(chunk)
-
-            while decoder.has_pcm():
-                pcm_bytes = decoder.read_pcm(pcm_buf)
-                if pcm_bytes > 0:
-                    elapsed_ms = time.ticks_diff(time.ticks_ms(), start_ticks)
-                    gain = 1.0
-
-                    if max_ms > 0 and fade_out_ms > 0:
-                        rem_ms = max_ms - elapsed_ms
-                        if rem_ms <= fade_out_ms:
-                            gain = max(0.0, rem_ms / fade_out_ms)
-                    elif is_last_repeat and fade_out_ms > 0 and file_size > 0:
-                        file_bytes_left = file_size - bytes_read_from_file
-                        if file_bytes_left <= 0:
-                            gain = 0.0
-                        else:
-                            ms_left = file_bytes_left / 16.0
-                            if ms_left <= fade_out_ms:
-                                gain = max(0.0, ms_left / fade_out_ms)
-
-                    self._write_pcm_with_gain(pcm_buf, pcm_bytes, gain)
-
-        log.info("[TRACE EXIT] StandaloneBootPlayer._play_mp3_sync -> True")
-        return True
 
     def play(self, filepath, repeat_count=1, max_duration_sec=0, fade_out_ms=1000, resume_playback=False, start_pos_bytes=0, start_pos_sec=0.0):
         log.info("[TRACE ENTER] StandaloneBootPlayer.play(filepath=%s, repeat=%s, max_dur=%s, fade=%s, resume=%s, start_b=%s, start_s=%s)",
@@ -251,9 +106,17 @@ class StandaloneBootPlayer:
 
                 with open(filepath, "rb") as f:
                     if filepath.lower().endswith(".wav"):
-                        self._play_wav_sync(f, start_ticks, max_ms, fade_out_ms, is_last_repeat, start_pos_bytes=current_seek_b, start_pos_sec=current_seek_s)
+                        res, final_b, final_s = asyncio.run(stream_wav(
+                            f, self._init_i2s, start_ticks, max_ms, fade_out_ms, is_last_repeat,
+                            start_pos_bytes=current_seek_b, start_pos_sec=current_seek_s,
+                            stop_checker=None, yield_ms=0, pos_container=self
+                        ))
                     else:
-                        self._play_mp3_sync(f, file_size, start_ticks, max_ms, fade_out_ms, is_last_repeat, start_pos_bytes=current_seek_b, start_pos_sec=current_seek_s)
+                        res, final_b, final_s = asyncio.run(stream_mp3(
+                            f, file_size, self._init_i2s, start_ticks, max_ms, fade_out_ms, is_last_repeat,
+                            start_pos_bytes=current_seek_b, start_pos_sec=current_seek_s,
+                            stop_checker=None, yield_ms=0, pos_container=self
+                        ))
 
         except Exception as e:
             log.error(f"Ошибка автономного воспроизведения: {e}")
