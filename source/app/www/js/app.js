@@ -1,17 +1,20 @@
 let savedPassword = "";
-let savedMaxFileBytes = 4194304; // 4 МБ
+let savedMaxFileBytes = 4194304;
 let savedAvailableBytes = 0;
 let savedAllowedExtensions = ['mp3', 'wav'];
 let currentAudioUrl = null;
 let convertedWavBlob = null;
 
-// Чистый SHA-256
 async function sha256Async(message) {
+    console.log("[TRACE ENTER] sha256Async", message ? "(length: " + message.length + ")" : "");
+    let result = "";
     if (window.crypto && crypto.subtle && crypto.subtle.digest) {
         const msgBuffer = new TextEncoder().encode(message);
         const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
         const hashArray = Array.from(new Uint8Array(hashBuffer));
-        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        result = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        console.log("[TRACE EXIT] sha256Async -> SubtleCrypto success");
+        return result;
     }
     
     const K = [
@@ -58,38 +61,26 @@ async function sha256Async(message) {
         H[0] = (H[0] + a) | 0; H[1] = (H[1] + b) | 0; H[2] = (H[2] + c) | 0; H[3] = (H[3] + d) | 0;
         H[4] = (H[4] + e) | 0; H[5] = (H[5] + f) | 0; H[6] = (H[6] + g) | 0; H[7] = (H[7] + h) | 0;
     }
-    return H.map(n => (n >>> 0).toString(16).padStart(8, '0')).join('');
+    result = H.map(n => (n >>> 0).toString(16).padStart(8, '0')).join('');
+    console.log("[TRACE EXIT] sha256Async -> JS Fallback success");
+    return result;
 }
 
 function togglePassword() {
+    console.log("[TRACE ENTER] togglePassword");
     const pwdInput = document.getElementById('pwdInput');
     const check = document.getElementById('showPwdCheck');
     if (pwdInput && check) {
         pwdInput.type = check.checked ? 'text' : 'password';
     }
+    console.log("[TRACE EXIT] togglePassword");
 }
 
-// Передискретизация до 22050 Гц и микширование в Mono (1 канал)
-async function optimizeAudioBuffer(audioBuffer, targetSampleRate = 22050) {
-    const offlineCtx = new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(
-        1, // Принудительно 1 канал (Mono)
-        Math.ceil(audioBuffer.duration * targetSampleRate),
-        targetSampleRate
-    );
-
-    const source = offlineCtx.createBufferSource();
-    source.buffer = audioBuffer;
-    source.connect(offlineCtx.destination);
-    source.start(0);
-
-    return await offlineCtx.startRendering();
-}
-
-// Оптимизированный конвертер AudioBuffer -> 16-bit PCM WAV (Mono)
 function audioBufferToWavBlob(audioBuffer, maxSizeBytes) {
-    const numOfChan = audioBuffer.numberOfChannels; // 1 (Mono)
-    const sampleRate = audioBuffer.sampleRate;       // 22050 Гц
-    const bytesPerFrame = numOfChan * 2;             // 2 байта на отсчет (16 bit)
+    console.log("[TRACE ENTER] audioBufferToWavBlob", { duration: audioBuffer.duration, channels: audioBuffer.numberOfChannels, sampleRate: audioBuffer.sampleRate, maxSizeBytes });
+    const numOfChan = audioBuffer.numberOfChannels;
+    const sampleRate = audioBuffer.sampleRate;
+    const bytesPerFrame = numOfChan * 2;
     
     const maxDataBytes = maxSizeBytes - 44;
     const maxFrames = Math.floor(maxDataBytes / bytesPerFrame);
@@ -108,29 +99,37 @@ function audioBufferToWavBlob(audioBuffer, maxSizeBytes) {
     setUint32(fileLength - 8);
     setUint32(0x45564157); // "WAVE"
     setUint32(0x20746d66); // "fmt "
-    setUint32(16);         // Subchunk1Size
+    setUint32(16);
     setUint16(1);          // PCM
     setUint16(numOfChan);
     setUint32(sampleRate);
     setUint32(sampleRate * bytesPerFrame);
     setUint16(bytesPerFrame);
-    setUint16(16);         // 16-bit
+    setUint16(16);
     setUint32(0x61746164); // "data"
     setUint32(dataChunkSize);
 
-    const channelData = audioBuffer.getChannelData(0);
-
-    for (let offset = 0; offset < framesToEncode; offset++) {
-        let sample = Math.max(-1, Math.min(1, channelData[offset]));
-        sample = (0.5 + sample < 0 ? sample * 32768 : sample * 32767) | 0;
-        view.setInt16(pos, sample, true);
-        pos += 2;
+    const channels = [];
+    for (let i = 0; i < numOfChan; i++) {
+        channels.push(audioBuffer.getChannelData(i));
     }
 
-    return new Blob([buffer], { type: "audio/wav" });
+    for (let offset = 0; offset < framesToEncode; offset++) {
+        for (let i = 0; i < numOfChan; i++) {
+            let sample = Math.max(-1, Math.min(1, channels[i][offset]));
+            sample = (0.5 + sample < 0 ? sample * 32768 : sample * 32767) | 0;
+            view.setInt16(pos, sample, true);
+            pos += 2;
+        }
+    }
+
+    const blob = new Blob([buffer], { type: "audio/wav" });
+    console.log("[TRACE EXIT] audioBufferToWavBlob -> blob size: " + blob.size + " B");
+    return blob;
 }
 
 async function loadView(viewName) {
+    console.log("[TRACE ENTER] loadView", viewName);
     const container = document.getElementById('app-container');
     try {
         const response = await fetch('/www/' + viewName);
@@ -141,8 +140,12 @@ async function loadView(viewName) {
 
         if (viewName === 'upload.html') {
             loadSystemInfo();
+        } else if (viewName === 'config.html') {
+            loadConfigData();
         }
+        console.log("[TRACE EXIT] loadView -> success", viewName);
     } catch (err) {
+        console.error("[TRACE EXIT] loadView -> error", err);
         container.innerHTML = `
             <div class="card">
                 <div class="icon-header">⚠️</div>
@@ -154,6 +157,7 @@ async function loadView(viewName) {
 }
 
 async function handleLogin(e) {
+    console.log("[TRACE ENTER] handleLogin");
     e.preventDefault();
     const pwdInput = document.getElementById('pwdInput').value;
     const loginStatus = document.getElementById('loginStatus');
@@ -177,19 +181,26 @@ async function handleLogin(e) {
 
         if (verifyResp.ok) {
             savedPassword = pwdInput;
+            console.log("[TRACE EXIT] handleLogin -> Auth successful");
             loadView('upload.html');
         } else {
             const errData = await verifyResp.json();
+            console.log("[TRACE EXIT] handleLogin -> Auth failed", errData);
             loginStatus.innerHTML = `<span style="color: #ef4444;">❌ ${errData.error || 'Неверный пароль'}</span>`;
         }
     } catch (err) {
+        console.error("[TRACE EXIT] handleLogin -> Network error", err);
         loginStatus.innerHTML = `<span style="color: #ef4444;">❌ Ошибка соединения</span>`;
     }
 }
 
 async function loadSystemInfo() {
+    console.log("[TRACE ENTER] loadSystemInfo");
     const diskInfo = document.getElementById('diskInfo');
-    if (!diskInfo) return;
+    if (!diskInfo) {
+        console.log("[TRACE EXIT] loadSystemInfo (no diskInfo element)");
+        return;
+    }
     try {
         const res = await fetch('/api/info');
         const data = await res.json();
@@ -205,13 +216,115 @@ async function loadSystemInfo() {
         if (fileInput && savedAllowedExtensions.length) {
             fileInput.accept = savedAllowedExtensions.map(e => '.' + e.toLowerCase().replace(/^\./, '')).join(',');
         }
+        console.log("[TRACE EXIT] loadSystemInfo -> Loaded info", data);
     } catch (e) {
+        console.error("[TRACE EXIT] loadSystemInfo -> Exception", e);
         diskInfo.innerText = "💾 Память ESP32 готова к загрузке";
     }
 }
 
-// Выбор и оптимизированная конвертация аудиофайла
+async function loadConfigData() {
+    console.log("[TRACE ENTER] loadConfigData");
+    const status = document.getElementById('configStatus');
+    if (status) status.innerText = "⏳ Загрузка настроек...";
+
+    try {
+        const nonceResp = await fetch('/api/get-nonce');
+        const nonceData = await nonceResp.json();
+        const nonce = nonceData.nonce;
+        const authHash = await sha256Async(savedPassword + nonce);
+
+        const res = await fetch('/api/config', {
+            headers: {
+                'X-Auth-Nonce': nonce,
+                'X-Auth-Hash': authHash
+            }
+        });
+
+        if (res.ok) {
+            const cfg = await res.json();
+            console.log("[TRACE LOAD CONFIG DATA]", cfg);
+            document.getElementById('cfg_boot_mode').value = cfg.boot_mode || 'music_first';
+            document.getElementById('cfg_repeat_count').value = cfg.repeat_count || 1;
+            document.getElementById('cfg_max_duration').value = cfg.max_play_duration_sec || 0;
+            document.getElementById('cfg_fade_out').value = cfg.fade_out_ms || 1000;
+            document.getElementById('cfg_smart_timeout').value = cfg.smart_timeout_sec || 7;
+            document.getElementById('cfg_last_pos_sec').value = cfg.last_play_pos_sec !== undefined ? cfg.last_play_pos_sec : 0;
+            document.getElementById('cfg_resume_playback').checked = !!cfg.resume_playback;
+            document.getElementById('cfg_wifi_ssid').value = cfg.wifi_ssid || '';
+            document.getElementById('cfg_upload_password').value = savedPassword;
+            if (status) status.innerText = "";
+            console.log("[TRACE EXIT] loadConfigData -> Success");
+        } else {
+            console.warn("[TRACE EXIT] loadConfigData -> Response not OK");
+            if (status) status.innerHTML = `<span style="color: #ef4444;">❌ Ошибка загрузки настроек</span>`;
+        }
+    } catch (e) {
+        console.error("[TRACE EXIT] loadConfigData -> Error", e);
+        if (status) status.innerHTML = `<span style="color: #ef4444;">❌ Сбой связи с ESP32</span>`;
+    }
+}
+
+async function saveConfig(e) {
+    console.log("[TRACE ENTER] saveConfig");
+    e.preventDefault();
+    const status = document.getElementById('configStatus');
+    status.innerText = "🔑 Авторизация и запись...";
+
+    const newUploadPwd = document.getElementById('cfg_upload_password').value;
+
+    const payload = {
+        boot_mode: document.getElementById('cfg_boot_mode').value,
+        repeat_count: parseInt(document.getElementById('cfg_repeat_count').value),
+        max_play_duration_sec: parseInt(document.getElementById('cfg_max_duration').value),
+        fade_out_ms: parseInt(document.getElementById('cfg_fade_out').value),
+        smart_timeout_sec: parseInt(document.getElementById('cfg_smart_timeout').value),
+        last_play_pos_sec: parseFloat(document.getElementById('cfg_last_pos_sec').value) || 0,
+        resume_playback: document.getElementById('cfg_resume_playback').checked,
+        wifi_ssid: document.getElementById('cfg_wifi_ssid').value,
+        upload_password: newUploadPwd
+    };
+
+    const newWifiPwd = document.getElementById('cfg_wifi_password').value;
+    if (newWifiPwd) {
+        payload.wifi_password = newWifiPwd;
+    }
+
+    console.log("[TRACE SAVE CONFIG PAYLOAD]", payload);
+
+    try {
+        const nonceResp = await fetch('/api/get-nonce');
+        const nonceData = await nonceResp.json();
+        const nonce = nonceData.nonce;
+        const authHash = await sha256Async(savedPassword + nonce);
+
+        const res = await fetch('/api/config', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Auth-Nonce': nonce,
+                'X-Auth-Hash': authHash
+            },
+            body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+            savedPassword = newUploadPwd;
+            status.innerHTML = `<span style="color: #10b981;">✅ Настройки сохранены в config.json!</span>`;
+            console.log("[TRACE EXIT] saveConfig -> Saved successfully");
+        } else {
+            const err = await res.json();
+            status.innerHTML = `<span style="color: #ef4444;">❌ ${err.error || 'Ошибка записи'}</span>`;
+            console.warn("[TRACE EXIT] saveConfig -> Failed", err);
+        }
+    } catch (err) {
+        console.error("[TRACE EXIT] saveConfig -> Exception", err);
+        status.innerHTML = `<span style="color: #ef4444;">❌ Ошибка сети при сохранении</span>`;
+    }
+}
+
 async function handleFileSelect(event) {
+    console.log("[TRACE ENTER] handleFileSelect", event.target.files[0] ? event.target.files[0].name : "No file");
     const file = event.target.files[0];
     const previewContainer = document.getElementById('audioPreviewContainer');
     const audioPreview = document.getElementById('audioPreview');
@@ -226,24 +339,22 @@ async function handleFileSelect(event) {
 
     if (!file) {
         if (previewContainer) previewContainer.style.display = 'none';
+        console.log("[TRACE EXIT] handleFileSelect (file cleared)");
         return;
     }
 
-    status.innerHTML = "⏳ Декодирование, микширование в Mono и ресемплинг до 22.05 кГц...";
+    status.innerHTML = "⏳ Декодирование и конвертация файла в WAV...";
 
     try {
         const arrayBuffer = await file.arrayBuffer();
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        const rawAudioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
-
-        // Конвертация в Mono (1 канал) и 22050 Гц для 4x экономии места
-        const optimizedBuffer = await optimizeAudioBuffer(rawAudioBuffer, 22050);
+        const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
 
         const maxBytes = savedMaxFileBytes > 0 ? savedMaxFileBytes : 4194304;
-        convertedWavBlob = audioBufferToWavBlob(optimizedBuffer, maxBytes);
+        convertedWavBlob = audioBufferToWavBlob(audioBuffer, maxBytes);
         
         const sizeMB = (convertedWavBlob.size / (1024 * 1024)).toFixed(2);
-        const durationSec = (convertedWavBlob.size / (optimizedBuffer.sampleRate * optimizedBuffer.numberOfChannels * 2)).toFixed(1);
+        const durationSec = (convertedWavBlob.size / (audioBuffer.sampleRate * audioBuffer.numberOfChannels * 2)).toFixed(1);
 
         currentAudioUrl = URL.createObjectURL(convertedWavBlob);
         if (audioPreview && previewContainer) {
@@ -252,24 +363,28 @@ async function handleFileSelect(event) {
         }
 
         if (previewLabel) {
-            previewLabel.innerText = `Предпросмотр WAV Mono (${durationSec} сек, ${sizeMB} МБ):`;
+            previewLabel.innerText = `Предпросмотр WAV (${durationSec} сек, ${sizeMB} МБ):`;
         }
 
-        status.innerHTML = `<span style="color: #10b981;">✅ Конвертировано в WAV Mono (${durationSec} сек, ${sizeMB} МБ)</span>`;
+        status.innerHTML = `<span style="color: #10b981;">✅ Конвертировано в WAV (${durationSec} сек, ${sizeMB} МБ)</span>`;
+        console.log("[TRACE EXIT] handleFileSelect -> Conversion completed successfully");
 
     } catch (e) {
+        console.error("[TRACE EXIT] handleFileSelect -> Error", e);
         status.innerHTML = `<span style="color: #ef4444;">❌ Ошибка конвертации аудио: ${e.message}</span>`;
         if (previewContainer) previewContainer.style.display = 'none';
     }
 }
 
 async function startUpload() {
+    console.log("[TRACE ENTER] startUpload");
     const status = document.getElementById('status');
     const progressBar = document.getElementById('progressBar');
     const progressFill = document.getElementById('progressFill');
 
     if (!convertedWavBlob) {
         status.innerHTML = `<span style="color: #ef4444;">❌ Выберите корректный аудиофайл!</span>`;
+        console.warn("[TRACE EXIT] startUpload -> No blob to upload");
         return;
     }
 
@@ -303,25 +418,30 @@ async function startUpload() {
         xhr.onload = function() {
             if (xhr.status === 200) {
                 status.innerHTML = `<span style="color: #10b981;">✅ ${xhr.responseText}</span>`;
+                console.log("[TRACE EXIT] startUpload -> XHR Upload 200 OK");
                 loadSystemInfo();
             } else {
                 status.innerHTML = `<span style="color: #ef4444;">❌ ${xhr.responseText}</span>`;
+                console.warn("[TRACE EXIT] startUpload -> XHR Upload Error", xhr.status);
                 progressFill.style.width = "0%";
             }
         };
 
         xhr.onerror = function() {
+            console.error("[TRACE EXIT] startUpload -> XHR Network error");
             status.innerHTML = `<span style="color: #ef4444;">❌ Сбой сети при передаче файла</span>`;
         };
 
         xhr.send(convertedWavBlob);
 
     } catch (err) {
+        console.error("[TRACE EXIT] startUpload -> Exception", err);
         status.innerHTML = `<span style="color: #ef4444;">❌ Ошибка: ${err.message}</span>`;
     }
 }
 
 async function playOnEsp32() {
+    console.log("[TRACE ENTER] playOnEsp32");
     const status = document.getElementById('status');
     status.innerText = "🔑 Подготовка авторизации...";
 
@@ -343,15 +463,19 @@ async function playOnEsp32() {
         const result = await resp.json();
         if (resp.ok) {
             status.innerHTML = `<span style="color: #10b981;">▶ Воспроизведение заведено на ESP32</span>`;
+            console.log("[TRACE EXIT] playOnEsp32 -> Playing started");
         } else {
             status.innerHTML = `<span style="color: #ef4444;">❌ ${result.error || 'Ошибка воспроизведения'}</span>`;
+            console.warn("[TRACE EXIT] playOnEsp32 -> Server rejected play request", result);
         }
     } catch (err) {
+        console.error("[TRACE EXIT] playOnEsp32 -> Exception", err);
         status.innerHTML = `<span style="color: #ef4444;">❌ Сбой соединения с ESP32</span>`;
     }
 }
 
 async function stopOnEsp32() {
+    console.log("[TRACE ENTER] stopOnEsp32");
     const status = document.getElementById('status');
     try {
         const nonceResp = await fetch('/api/get-nonce');
@@ -370,24 +494,34 @@ async function stopOnEsp32() {
 
         if (resp.ok) {
             status.innerHTML = `<span style="color: #475569;">⏹ Воспроизведение остановлено</span>`;
+            console.log("[TRACE EXIT] stopOnEsp32 -> Playback stopped");
         }
     } catch (err) {
+        console.error("[TRACE EXIT] stopOnEsp32 -> Exception", err);
         status.innerHTML = `<span style="color: #ef4444;">❌ Сбой соединения с ESP32</span>`;
     }
 }
 
 function logout() {
+    console.log("[TRACE ENTER] logout");
     savedPassword = "";
     if (currentAudioUrl) {
         URL.revokeObjectURL(currentAudioUrl);
         currentAudioUrl = null;
     }
     convertedWavBlob = null;
+    console.log("[TRACE EXIT] logout");
     loadView('login.html');
 }
 
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => loadView('login.html'));
+    document.addEventListener('DOMContentLoaded', () => {
+        console.log("[TRACE ENTER] DOMContentLoaded event listener");
+        loadView('login.html');
+        console.log("[TRACE EXIT] DOMContentLoaded event listener");
+    });
 } else {
+    console.log("[TRACE ENTER] Direct script load initial view");
     loadView('login.html');
+    console.log("[TRACE EXIT] Direct script load initial view");
 }
