@@ -9,6 +9,8 @@ import struct
 import array
 import logging
 
+from hal.audio_utils import save_position_to_config, parse_wav_header, write_pcm_with_gain
+
 # Логгер модуля аудиосопровождения UI
 log = logging.getLogger("AUDIO")
 
@@ -86,25 +88,7 @@ class AudioPlayer:
     def _save_position_to_config(self, pos_bytes, pos_sec=0.0):
         """Сохранение позиции остановки воспроизведения в config.json без потери комментариев."""
         log.info("[TRACE ENTER] AudioPlayer._save_position_to_config(pos_bytes=%s, pos_sec=%s)", pos_bytes, pos_sec)
-        # Обновляем активную конфигурацию в оперативной памяти
-        if hasattr(self, 'config') and self.config is not None:
-            self.config['last_play_pos_bytes'] = pos_bytes
-            self.config['last_play_pos_sec'] = round(pos_sec, 2)
-
-        try:
-            with open('config.json', 'r') as fr:
-                raw_content = fr.read()
-
-            raw_content = re.sub(r'"last_play_pos_bytes"\s*:\s*\d+', f'"last_play_pos_bytes": {pos_bytes}', raw_content)
-            
-            if re.search(r'"last_play_pos_sec"\s*:\s*\d+(\.\d+)?', raw_content):
-                raw_content = re.sub(r'"last_play_pos_sec"\s*:\s*\d+(\.\d+)?', f'"last_play_pos_sec": {round(pos_sec, 2)}', raw_content)
-
-            with open('config.json', 'w') as fw:
-                fw.write(raw_content)
-            log.info(f"Сохранена позиция воспроизведения: {pos_bytes} B ({round(pos_sec, 2)} сек)")
-        except Exception as e:
-            log.error(f"Не удалось сохранить позицию в config.json: {e}")
+        save_position_to_config(pos_bytes, pos_sec, self.config)
         log.info("[TRACE EXIT] AudioPlayer._save_position_to_config")
 
     def _write_pcm_with_gain(self, buf, num_bytes, gain):
@@ -116,68 +100,19 @@ class AudioPlayer:
         if self._stop or not self.i2s:
             log.debug("[TRACE EXIT] AudioPlayer._write_pcm_with_gain (stopped or no i2s)")
             return
-
-        try:
-            if gain >= 0.99:
-                self.i2s.write(buf[:num_bytes])
-            elif gain <= 0.01:
-                zero_buf = bytearray(num_bytes)
-                self.i2s.write(zero_buf)
-            else:
-                # Масштабирование амплитуды PCM 16-bit signed
-                arr = array.array('h', memoryview(buf)[:num_bytes])
-                for i in range(len(arr)):
-                    arr[i] = int(arr[i] * gain)
-                self.i2s.write(arr)
-        except Exception as e:
-            log.warning(f"Ошибка записи PCM в I2S: {e}")
+        write_pcm_with_gain(self.i2s, buf, num_bytes, gain)
         log.debug("[TRACE EXIT] AudioPlayer._write_pcm_with_gain")
 
     async def _play_wav(self, f, start_ticks, max_ms, fade_out_ms, is_last_repeat, start_pos_bytes=0, start_pos_sec=0.0):
         """Воспроизведение WAV формата через I2S DMA с динамическим парсингом заголовков."""
         log.info("[TRACE ENTER] AudioPlayer._play_wav(start_pos_bytes=%s, start_pos_sec=%s)", start_pos_bytes, start_pos_sec)
-        riff_hdr = f.read(12)
-        if len(riff_hdr) < 12 or riff_hdr[:4] != b'RIFF' or riff_hdr[8:12] != b'WAVE':
+        wav_fmt = parse_wav_header(f)
+        if not wav_fmt:
             log.error("Файл не является валидным WAV!")
             log.info("[TRACE EXIT] AudioPlayer._play_wav -> False")
             return False
 
-        channels = 2
-        rate = 44100
-        bits = 16
-        data_size = 0
-        data_offset = 44
-
-        # Динамический поиск чанков 'fmt ' и 'data' для защиты от служебных тегов DAW/ID3
-        while True:
-            chunk_hdr = f.read(8)
-            if len(chunk_hdr) < 8:
-                break
-            chunk_id = chunk_hdr[:4]
-            chunk_size = struct.unpack('<I', chunk_hdr[4:8])[0]
-
-            if chunk_id == b'fmt ':
-                fmt_data = f.read(chunk_size)
-                if len(fmt_data) >= 14:
-                    channels = struct.unpack('<H', fmt_data[2:4])[0]
-                    rate = struct.unpack('<I', fmt_data[4:8])[0]
-                    if len(fmt_data) >= 16:
-                        bits = struct.unpack('<H', fmt_data[14:16])[0]
-            elif chunk_id == b'data':
-                data_size = chunk_size
-                data_offset = f.tell()
-                break
-            else:
-                # Пропуск непроизводимых метаданных (LIST, JUNK и т.д.)
-                try:
-                    f.seek(chunk_size, 1)
-                except Exception:
-                    rem = chunk_size
-                    while rem > 0:
-                        to_read = min(1024, rem)
-                        f.read(to_read)
-                        rem -= to_read
-
+        channels, rate, bits, data_size, data_offset = wav_fmt
         log.info(f"Запуск WAV: {rate} Hz, {bits} bit, channels={channels}, data_size={data_size} B")
 
         bytes_per_sec = rate * channels * (bits // 8) if (rate and channels and bits) else 176400
