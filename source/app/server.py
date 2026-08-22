@@ -3,6 +3,7 @@ import os
 import gc
 import logging
 import uasyncio as asyncio
+from hal.power_manager import power_mgr
 
 from microdot import Microdot, Request, send_file
 from app.security import SecurityManager
@@ -59,6 +60,7 @@ def init_server(config):
     @app.before_request
     async def log_request(request):
         gc.collect()
+        power_mgr.notify_activity()
         log.info(f"{request.method} {request.path} | Free RAM: {gc.mem_free()} B")
 
     @app.after_request

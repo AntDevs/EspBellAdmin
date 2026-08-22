@@ -12,6 +12,7 @@ import io
 
 from logger import setup_logging
 from app.security import SecurityManager
+from hal.power_manager import power_mgr
 
 # Инициализация глобального системного логгера для главного файла управления[cite: 8]
 setup_logging(logging.INFO)
@@ -255,6 +256,10 @@ def main():
 
     loop = asyncio.get_event_loop()
     loop.set_exception_handler(handle_async_exception)
+
+    # Запуск фонового Smart Timeout для автоматического обесточивания системы
+    timeout_sec = config.get('smart_timeout_sec', 5)
+    loop.create_task(power_mgr.start_smart_timeout(mode, timeout_sec=timeout_sec))
 
     # Ленивый импорт веб-сервера и UI-плеера после завершения работы автономного HAL плеера[cite: 8]
     from app.server import init_server, start_server
