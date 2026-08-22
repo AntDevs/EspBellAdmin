@@ -3,6 +3,10 @@ import os
 import time
 import gc
 import machine
+import logging
+
+# Логгер модуля безопасности
+log = logging.getLogger("SECURITY")
 
 try:
     import ubinascii as binascii
@@ -15,6 +19,12 @@ except ImportError:
     ucryptolib = None
 
 class SecurityManager:
+    """
+    Менеджер безопасности системы:
+    - Аппаратное шифрование/расшифровка конфиденциальных данных (AES-128 CBC)
+    - Защита от атаки повторного воспроизведения (Replay Attack) через Nonce
+    - Хеширование SHA-256 для проверки авторизации пользователей
+    """
     def __init__(self, ttl_seconds=60):
         self.active_nonces = {}
         self.ttl = ttl_seconds
@@ -58,7 +68,7 @@ class SecurityManager:
             encoded_str = binascii.b2a_base64(encrypted_bytes).decode('utf-8').strip()
             return "ENC:" + encoded_str
         except Exception as e:
-            print(f"[SECURITY ERROR] Сбой шифрования: {e}")
+            log.error(f"Сбой шифрования: {e}")
             return plain_text
 
     def decrypt_str(self, enc_text):
@@ -86,10 +96,11 @@ class SecurityManager:
 
             return decrypted_bytes.decode('utf-8')
         except Exception as e:
-            print(f"[SECURITY ALERT] Не удалось расшифровать пароль ({e}).")
+            log.warning(f"Не удалось расшифровать пароль: {e}")
             return ""
 
     def _cleanup_expired(self):
+        """Очистка просроченных токенов Nonce из оперативной памяти."""
         now = time.time()
         for nonce, ts in list(self.active_nonces.items()):
             if now - ts > self.ttl:
@@ -97,6 +108,7 @@ class SecurityManager:
         gc.collect()
 
     def generate_nonce(self):
+        """Генерация одноразового криптографического токена Nonce."""
         self._cleanup_expired()
         random_bytes = os.urandom(8)
         nonce = binascii.hexlify(random_bytes).decode('utf-8')
@@ -104,6 +116,7 @@ class SecurityManager:
         return nonce
 
     def hash_sha256(self, text):
+        """Вычисление хеш-суммы SHA-256 для строки."""
         if isinstance(text, str):
             text = text.encode('utf-8')
         h = hashlib.sha256(text)
@@ -112,6 +125,7 @@ class SecurityManager:
         return binascii.hexlify(h.digest()).decode('utf-8')
 
     def verify_upload_auth(self, request, required_password):
+        """Проверка авторизации входящего HTTP-запроса по сочетанию Nonce + SHA256 Hash."""
         required_password = self.decrypt_str(required_password)
 
         if not required_password:
@@ -121,16 +135,16 @@ class SecurityManager:
         user_hash = request.headers.get('X-Auth-Hash', '')
 
         if not user_nonce or user_nonce not in self.active_nonces:
-            print(f"[AUTH ERROR] Недействительный или просроченный токен Nonce: '{user_nonce}'")
+            log.warning(f"Недействительный или просроченный токен Nonce: '{user_nonce}'")
             return False, "Недействительный или просроченный токен (Nonce)!"
 
         del self.active_nonces[user_nonce]
         expected_hash = self.hash_sha256(required_password + user_nonce)
 
         if user_hash.lower() == expected_hash.lower():
-            print(f"[AUTH SUCCESS] Успешная авторизация (Nonce: {user_nonce})")
+            log.info(f"Успешная авторизация (Nonce: {user_nonce})")
             return True, "OK"
         else:
             client_ip = getattr(request, 'client_addr', ('unknown', 0))[0]
-            print(f"[AUTH SECURITY ALERT] Попытка ввода неверного пароля с IP: {client_ip}")
+            log.error(f"Попытка ввода неверного пароля с IP: {client_ip}")
             return False, "Неверный пароль!"

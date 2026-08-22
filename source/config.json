@@ -1,25 +1,88 @@
 {
+  // Режим загрузки: "music_first" (сначала проигрывается звук) или "default" (обычный запуск)
+  "boot_mode": "music_first",
+
+  "smart_timeout_sec": 7,
+
+  // Количество повторов воспроизведения аудиофайла
+  "repeat_count": 2,
+
+  // Максимальная длительность воспроизведения в секундах (0 - без лимита, играть весь файл)
+  "max_play_duration_sec": 10,
+
+  // Длительность плавного затухания громкости к концу воспроизведения в миллисекундах (0 - отключено)
+  "fade_out_ms": 2000,
+
+  // Возобновление воспроизведения с места остановки (минута/секунда)
+  "resume_playback": true,
+
+  // Сохранённая позиция остановки воспроизведения в байтах (0 = с начала)
+  "last_play_pos_bytes": 0,
+
+  // Сохранённая позиция остановки воспроизведения в секундах (0 = с начала)
+  "last_play_pos_sec": 0,
+
+  // Название вашей домашней Wi-Fi сети
   "wifi_ssid": "MyHome_555",
+
+  // Пароль вашей домашней Wi-Fi сети (шифруется автоматически при первом запуске)
   "wifi_password": "anton123",
+
+  // Пароль для загрузки файлов и управления через веб-интерфейс
   "upload_password": "admin",
-  "encrypted_fields": [
-      "wifi_password",
-      "upload_password",
-      "ap_password"
-    ],  
-  "allowed_extensions": [
-    "mp3"
-    ],
-  "hostname": "bell555",
-  "cert_path": "resources/cert.crt",
-  "key_path": "resources/cert.key",
-  "html_index_path": "app/www/index.html",
-  "media_dir": "/media",
-  "target_filename": "bell.mp3",
-  "max_file_size": 4194304,
-  "server_host": "0.0.0.0",
-  "server_port": 443,
+
+  // Название локальной точки доступа ESP32 (если не удалось подключиться к роутеру)
   "ap_ssid": "ESP32-Config",
+
+  // Пароль к локальной точке доступа ESP32
   "ap_password": "anton123",
+
+  // Список полей конфигурации, которые автоматически шифруются алгоритмом AES-128
+  "encrypted_fields": [
+    "wifi_password",
+    "upload_password",
+    "ap_password"
+  ],
+
+  // Разрешённые расширения аудиофайлов для загрузки через веб-интерфейс
+  "allowed_extensions": [
+    "mp3",
+    "wav"
+  ],
+
+  // Сетевое имя устройства (mDNS / DHCP hostname)
+  "hostname": "bell555",
+
+  // Путь к SSL-сертификату для работы HTTPS
+  "cert_path": "resources/cert.crt",
+
+  // Путь к закрытому ключу SSL-сертификата
+  "key_path": "resources/cert.key",
+
+  // Путь к главному HTML-файлу веб-интерфейса
+  "html_index_path": "app/www/index.html",
+
+  // Директория в файловой системе ESP32 для хранения аудиофайлов
+  "media_dir": "/media",
+
+  // Имя целевого аудиофайла для воспроизведения
+  "target_filename": "bell.wav",
+
+  // Максимальный допустимый размер загружаемого файла в байтах (4194304 = 4 МБ)
+  "max_file_size": 4194304,
+
+  // IP-адрес для привязки веб-сервера (0.0.0.0 - прослушивать все интерфейсы)
+  "server_host": "0.0.0.0",
+
+  // Порт веб-сервера (443 для HTTPS, 80 для HTTP)
+  "server_port": 443,
+
+  "i2s_bck_pin": 15,
+  "i2s_ws_pin": 16,
+  "i2s_sd_pin": 17,
+  "i2s_id": 0,
+
+  // IP-адрес ESP32 в режиме локальной точки доступа (AP)
   "ap_ip": "192.168.4.1"
+
 }
