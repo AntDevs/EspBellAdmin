@@ -1,10 +1,12 @@
+import os
 import json
 import re
+import time
 import struct
 import array
-import time
 import logging
 import uasyncio as asyncio
+from machine import I2S, Pin
 
 try:
     import mp3dec
@@ -12,9 +14,73 @@ except ImportError:
     mp3dec = None
 
 log = logging.getLogger("AUDIO_UTILS")
+_global_i2s = None
+
+def load_config(config_file='config.json'):
+    """Единая функция парсинга файла конфигурации config.json с очисткой комментариев."""
+    log.info("[TRACE ENTER] load_config(config_file=%s)", config_file)
+    try:
+        with open(config_file, 'r') as f:
+            lines = [l for l in f if not l.strip().startswith(('//', '#'))]
+            raw_content = "".join(lines)
+            cfg = json.loads(raw_content)
+            log.info("[TRACE EXIT] load_config -> OK")
+            return cfg
+    except Exception as e:
+        log.error(f"Ошибка чтения конфигурации {config_file}: {e}")
+        log.info("[TRACE EXIT] load_config -> empty dict")
+        return {}
+
+def init_hardware_i2s(rate=44100, bits=16, channels=2, ibuf=8192, bck_pin=15, ws_pin=16, sd_pin=17, i2s_id=0):
+    """Единая централизованная точка инициализации аппаратного контроллера I2S."""
+    global _global_i2s
+    log.info("[TRACE ENTER] init_hardware_i2s(rate=%s, bits=%s, channels=%s, ibuf=%s, pins=(%s,%s,%s,%s))",
+             rate, bits, channels, ibuf, bck_pin, ws_pin, sd_pin, i2s_id)
+
+    if _global_i2s:
+        try:
+            _global_i2s.deinit()
+        except Exception:
+            pass
+        _global_i2s = None
+
+    fmt = I2S.STEREO if channels == 2 else I2S.MONO
+    log.info(f"Конфигурирование I2S (Rate={rate}Hz, Bits={bits}, Format={fmt}, Buffer={ibuf}B)...")
+
+    _global_i2s = I2S(
+        i2s_id,
+        sck=Pin(bck_pin),
+        ws=Pin(ws_pin),
+        sd=Pin(sd_pin),
+        mode=I2S.TX,
+        bits=bits,
+        format=fmt,
+        rate=rate,
+        ibuf=ibuf
+    )
+
+    try:
+        _global_i2s.write(bytearray(2048))
+    except Exception as e:
+        log.warning(f"Ошибка прогрева I2S: {e}")
+
+    log.info("[TRACE EXIT] init_hardware_i2s")
+    return _global_i2s
+
+def deinit_hardware_i2s():
+    """Единая функция корректного закрытия шины I2S и освобождения DMA-каналов."""
+    global _global_i2s
+    log.info("[TRACE ENTER] deinit_hardware_i2s()")
+    if _global_i2s:
+        try:
+            _global_i2s.deinit()
+        except Exception:
+            pass
+        _global_i2s = None
+    log.info("[TRACE EXIT] deinit_hardware_i2s")
 
 def save_position_to_config(pos_bytes, pos_sec=0.0, config=None):
-    """Общая функция сохранения позиции воспроизведения в config.json и оперативную память."""
+    """Сохранение позиции воспроизведения в config.json."""
     log.info("[TRACE ENTER] save_position_to_config(pos_bytes=%s, pos_sec=%s)", pos_bytes, pos_sec)
     if config is not None:
         config['last_play_pos_bytes'] = pos_bytes
@@ -23,20 +89,21 @@ def save_position_to_config(pos_bytes, pos_sec=0.0, config=None):
         with open('config.json', 'r') as fr:
             raw_content = fr.read()
 
-        raw_content = re.sub(r'"last_play_pos_bytes"\s*:\s*\d+', f'"last_play_pos_bytes": {pos_bytes}', raw_content)
-        
+        if re.search(r'"last_play_pos_bytes"\s*:\s*\d+', raw_content):
+            raw_content = re.sub(r'"last_play_pos_bytes"\s*:\s*\d+', f'"last_play_pos_bytes": {pos_bytes}', raw_content)
+
         if re.search(r'"last_play_pos_sec"\s*:\s*\d+(\.\d+)?', raw_content):
             raw_content = re.sub(r'"last_play_pos_sec"\s*:\s*\d+(\.\d+)?', f'"last_play_pos_sec": {round(pos_sec, 2)}', raw_content)
 
         with open('config.json', 'w') as fw:
             fw.write(raw_content)
-        log.info(f"Сохранена позиция воспроизведения: {pos_bytes} B ({round(pos_sec, 2)} сек)")
+        log.info(f"Сохранена позиция воспроизведения в config.json: {pos_bytes} B ({round(pos_sec, 2)} сек)")
     except Exception as e:
         log.error(f"Не удалось сохранить позицию в config.json: {e}")
     log.info("[TRACE EXIT] save_position_to_config")
 
 def parse_wav_header(f):
-    """Общий парсинг WAV-заголовков с фиксацией смещения и точного размера PCM-данных."""
+    """Парсинг WAV-заголовков с фиксацией смещения data_offset и точной длины data_size."""
     log.info("[TRACE ENTER] parse_wav_header()")
     riff_hdr = f.read(12)
     if len(riff_hdr) < 12 or riff_hdr[:4] != b'RIFF' or riff_hdr[8:12] != b'WAVE':
@@ -79,13 +146,12 @@ def parse_wav_header(f):
                     rem -= to_read
 
     res = (channels, rate, bits, data_size, data_offset)
-    log.info("[TRACE EXIT] parse_wav_header -> channels=%s, rate=%s, bits=%s, data_size=%s, data_offset=%s", channels, rate, bits, data_size, data_offset)
+    log.info("[TRACE EXIT] parse_wav_header -> channels=%s, rate=%s, bits=%s, data_size=%s, data_offset=%s",
+             channels, rate, bits, data_size, data_offset)
     return res
 
 def write_pcm_with_gain(i2s, buf, num_bytes, gain, channels=2):
-    """
-    Запись PCM в I2S с математическим масштабированием 16-битных сэмплов и поддержкой дублирования Mono->Stereo.
-    """
+    """Запись PCM в I2S с масштабированием знаковых сэмплов и автодублированием Mono->Stereo."""
     log.debug("[TRACE ENTER] write_pcm_with_gain(num_bytes=%s, gain=%s, channels=%s)", num_bytes, gain, channels)
     if not i2s or num_bytes <= 0:
         log.debug("[TRACE EXIT] write_pcm_with_gain (no i2s or num_bytes <= 0)")
@@ -97,7 +163,6 @@ def write_pcm_with_gain(i2s, buf, num_bytes, gain, channels=2):
 
     try:
         if channels == 1:
-            # Преобразование Mono 16-bit -> Stereo 16-bit для корректной работы ЦАП PCM5102A
             num_samples = num_bytes // 2
             out_buf = bytearray(num_bytes * 2)
 
@@ -123,9 +188,7 @@ def write_pcm_with_gain(i2s, buf, num_bytes, gain, channels=2):
                 out_buf[out_idx + 3] = b_high
 
             i2s.write(out_buf)
-
         else:
-            # Stereo 16-bit
             if gain >= 0.99:
                 i2s.write(memoryview(buf)[:num_bytes])
             elif gain <= 0.001:
@@ -153,9 +216,10 @@ def write_pcm_with_gain(i2s, buf, num_bytes, gain, channels=2):
         log.warning(f"Ошибка записи PCM: {e}")
     log.debug("[TRACE EXIT] write_pcm_with_gain")
 
-async def stream_wav(f, init_i2s_cb, start_ticks, max_ms, fade_out_ms, is_last_repeat, start_pos_bytes=0, start_pos_sec=0.0, stop_checker=None, yield_ms=0, pos_container=None):
-    """Единая функция проигрывания WAV потока с поддержкой позиционирования, затухания и проверок остановки."""
-    log.info("[TRACE ENTER] stream_wav(start_pos_bytes=%s, start_pos_sec=%s, max_ms=%s, fade_ms=%s)", start_pos_bytes, start_pos_sec, max_ms, fade_out_ms)
+async def stream_wav(f, ibuf, pins, start_ticks, max_ms, fade_out_ms, is_last_repeat, start_pos_bytes=0, start_pos_sec=0.0, stop_checker=None, yield_ms=0, pos_container=None):
+    """Потоковое воспроизведение WAV файлов."""
+    log.info("[TRACE ENTER] stream_wav(start_pos_bytes=%s, start_pos_sec=%s, max_ms=%s, fade_ms=%s)",
+             start_pos_bytes, start_pos_sec, max_ms, fade_out_ms)
     wav_fmt = parse_wav_header(f)
     if not wav_fmt:
         log.error("Файл не является валидным WAV!")
@@ -168,8 +232,12 @@ async def stream_wav(f, init_i2s_cb, start_ticks, max_ms, fade_out_ms, is_last_r
     bytes_per_sec = rate * channels * (bits // 8) if (rate and channels and bits) else 176400
     frame_align = channels * (bits // 8)
     
-    # Для моно-файлов инициализируем шину I2S в режиме Stereo для PCM5102A
-    i2s_obj = init_i2s_cb(rate=rate, bits=bits, channels=2 if channels == 1 else channels)
+    bck, ws, sd, i2s_id = pins
+    i2s_obj = init_hardware_i2s(
+        rate=rate, bits=bits,
+        channels=2 if channels == 1 else channels,
+        ibuf=ibuf, bck_pin=bck, ws_pin=ws, sd_pin=sd, i2s_id=i2s_id
+    )
 
     if start_pos_bytes == 0 and start_pos_sec > 0:
         start_pos_bytes = data_offset + int(start_pos_sec * bytes_per_sec)
@@ -243,9 +311,10 @@ async def stream_wav(f, init_i2s_cb, start_ticks, max_ms, fade_out_ms, is_last_r
     log.info("[TRACE EXIT] stream_wav -> True")
     return True, cur_pos_b, cur_pos_s
 
-async def stream_mp3(f, file_size, init_i2s_cb, start_ticks, max_ms, fade_out_ms, is_last_repeat, start_pos_bytes=0, start_pos_sec=0.0, stop_checker=None, yield_ms=0, pos_container=None):
-    """Единая функция проигрывания MP3 потока с использованием C-модуля mp3dec."""
-    log.info("[TRACE ENTER] stream_mp3(file_size=%s, start_pos_bytes=%s, start_pos_sec=%s)", file_size, start_pos_bytes, start_pos_sec)
+async def stream_mp3(f, file_size, ibuf, pins, start_ticks, max_ms, fade_out_ms, is_last_repeat, start_pos_bytes=0, start_pos_sec=0.0, stop_checker=None, yield_ms=0, pos_container=None):
+    """Потоковое воспроизведение MP3 файлов через mp3dec."""
+    log.info("[TRACE ENTER] stream_mp3(file_size=%s, start_pos_bytes=%s, start_pos_sec=%s)",
+             file_size, start_pos_bytes, start_pos_sec)
     if not mp3dec:
         log.error("C-модуль mp3dec не найден в прошивке!")
         log.info("[TRACE EXIT] stream_mp3 -> False")
@@ -261,7 +330,11 @@ async def stream_mp3(f, file_size, init_i2s_cb, start_ticks, max_ms, fade_out_ms
         f.seek(start_pos_bytes)
         log.info(f"Возобновление MP3 с позиции {start_pos_bytes} B / {start_pos_sec} сек")
 
-    i2s_obj = init_i2s_cb(rate=44100, bits=16, channels=2)
+    bck, ws, sd, i2s_id = pins
+    i2s_obj = init_hardware_i2s(
+        rate=44100, bits=16, channels=2,
+        ibuf=ibuf, bck_pin=bck, ws_pin=ws, sd_pin=sd, i2s_id=i2s_id
+    )
     decoder = mp3dec.Decoder()
     pcm_buf = bytearray(4096)
     bytes_read_from_file = f.tell()
@@ -322,3 +395,101 @@ async def stream_mp3(f, file_size, init_i2s_cb, start_ticks, max_ms, fade_out_ms
 
     log.info("[TRACE EXIT] stream_mp3 -> True")
     return True, cur_pos_b, cur_pos_s
+
+async def play_audio_track(mode='boot', filepath=None, ibuf=8192, stop_checker=None, yield_ms=1, pos_container=None, config=None, **kwargs):
+    """
+    Интегрированная функция управления воспроизведением.
+    Самостоятельно вычитывает пины и параметры из config.json.
+    """
+    log.info("[TRACE ENTER] play_audio_track(mode=%s, filepath=%s, ibuf=%s)", mode, filepath, ibuf)
+
+    if config is None:
+        config = load_config()
+
+    # Считывание назначений пинов из конфигурации (с безопасными фолбэками)
+    bck = config.get('i2s_bck_pin', 15)
+    ws = config.get('i2s_ws_pin', 16)
+    sd = config.get('i2s_sd_pin', 17)
+    i2s_id = config.get('i2s_id', 0)
+    pins = (bck, ws, sd, i2s_id)
+
+    if filepath is None:
+        media_dir = config.get('media_dir', '/media')
+        target = config.get('target_filename', 'bell.wav')
+        filepath = f"{media_dir}/{target}"
+
+    try:
+        file_size = os.stat(filepath)[6]
+    except OSError:
+        log.error(f"Файл {filepath} не найден!")
+        log.info("[TRACE EXIT] play_audio_track -> False (file not found)")
+        return False
+
+    max_duration_sec = kwargs.get('max_duration_sec', config.get('max_play_duration_sec', 0))
+    fade_out_ms = kwargs.get('fade_out_ms', config.get('fade_out_ms', 1000))
+    resume_playback = kwargs.get('resume_playback', config.get('resume_playback', True))
+    start_pos_bytes = kwargs.get('start_pos_bytes', config.get('last_play_pos_bytes', 0))
+    start_pos_sec = kwargs.get('start_pos_sec', config.get('last_play_pos_sec', 0.0))
+
+    if mode == 'boot':
+        repeat_count = kwargs.get('repeat_count', config.get('repeat_count', 1))
+    else:  # mode == 'ui'
+        repeat_count = kwargs.get('repeat_count', 1)
+
+    initial_seek_bytes = start_pos_bytes if resume_playback else 0
+    initial_seek_sec = start_pos_sec if resume_playback else 0.0
+
+    if pos_container is not None:
+        pos_container.current_pos_bytes = initial_seek_bytes
+        pos_container.current_pos_sec = initial_seek_sec
+
+    max_ms = int(max_duration_sec * 1000) if max_duration_sec > 0 else 0
+    start_ticks = time.ticks_ms()
+
+    log.info(f"Открытие аудиофайла {filepath} [{mode.upper()} MODE]...")
+    log.info(f"Пины I2S: BCK={bck}, WS={ws}, SD={sd}, ID={i2s_id}")
+    log.info(f"Параметры сессии: повторов={repeat_count}, лимит={max_duration_sec}s, fade={fade_out_ms}ms, resume={resume_playback}, start_pos={initial_seek_bytes}B ({initial_seek_sec}s)")
+
+    final_pos_bytes = initial_seek_bytes
+    final_pos_sec = initial_seek_sec
+
+    try:
+        for rep in range(repeat_count):
+            if stop_checker and stop_checker():
+                log.info("Цикл повторов прерван внешним сигналом остановки.")
+                break
+
+            elapsed_ms = time.ticks_diff(time.ticks_ms(), start_ticks)
+            if max_ms > 0 and elapsed_ms >= max_ms:
+                log.info("Прерывание цикла повторов по лимиту времени.")
+                break
+
+            is_last_repeat = (rep == repeat_count - 1)
+            current_seek_b = initial_seek_bytes if rep == 0 else 0
+            current_seek_s = initial_seek_sec if rep == 0 else 0.0
+            log.info(f"Запуск итерации проигрывания {rep + 1}/{repeat_count}...")
+
+            with open(filepath, "rb") as f:
+                if filepath.lower().endswith(".wav"):
+                    res, final_pos_bytes, final_pos_sec = await stream_wav(
+                        f, ibuf, pins, start_ticks, max_ms, fade_out_ms, is_last_repeat,
+                        start_pos_bytes=current_seek_b, start_pos_sec=current_seek_s,
+                        stop_checker=stop_checker, yield_ms=yield_ms, pos_container=pos_container
+                    )
+                else:
+                    res, final_pos_bytes, final_pos_sec = await stream_mp3(
+                        f, file_size, ibuf, pins, start_ticks, max_ms, fade_out_ms, is_last_repeat,
+                        start_pos_bytes=current_seek_b, start_pos_sec=current_seek_s,
+                        stop_checker=stop_checker, yield_ms=yield_ms, pos_container=pos_container
+                    )
+
+    except Exception as e:
+        log.error(f"Ошибка в цикле play_audio_track: {e}")
+    finally:
+        if resume_playback:
+            save_position_to_config(final_pos_bytes, final_pos_sec, config)
+        deinit_hardware_i2s()
+        log.info("Воспроизведение аудиофайла полностью завершено, I2S освобожден.")
+
+    log.info("[TRACE EXIT] play_audio_track -> True")
+    return True

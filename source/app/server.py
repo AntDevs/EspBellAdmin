@@ -14,8 +14,8 @@ from app.player import AudioPlayer
 # Логгер модуля веб-сервера
 log = logging.getLogger("SERVER")
 
-# Единый экземпляр проигрывателя для работы с UI
-player = AudioPlayer(bck_pin15=15, lck_pin16=16, din_pin17=17)
+# Единый экземпляр проигрывателя для работы с UI (пины вычитываются из config.json)
+player = AudioPlayer()
 
 def init_server(config):
     """Инициализация роутов и настроек веб-сервера Microdot."""
@@ -24,7 +24,7 @@ def init_server(config):
     Request.max_content_length = max_size
     Request.max_body_size = max_size
 
-    # Привязываем объект конфигурации к плееру для синхронизации оперативной памяти
+    # Привязываем объект конфигурации к плееру для автоматического чтения настроек
     player.config = config
 
     app = Microdot()
@@ -218,7 +218,6 @@ def init_server(config):
                     if val is None:
                         continue
 
-                    # Если пользователь вручную изменил секунды старта — обновляем и расчитываем байты
                     if key == 'last_play_pos_sec':
                         final_val = float(val)
                         bytes_calc = int(final_val * 176400)
@@ -226,7 +225,6 @@ def init_server(config):
                         if re.search(r'"last_play_pos_bytes"\s*:\s*\d+', raw_content):
                             raw_content = re.sub(r'"last_play_pos_bytes"\s*:\s*\d+', f'"last_play_pos_bytes": {bytes_calc}', raw_content)
 
-                    # Если поле шифруемое и передано незашифрованным
                     elif key in enc_fields and str(val) and not str(val).startswith("ENC:"):
                         enc_res = security.encrypt_str(str(val))
                         if isinstance(enc_res, (tuple, list)):
@@ -241,10 +239,8 @@ def init_server(config):
                         else:
                             final_val = val
 
-                    # Обновление структуры в памяти
                     config[key] = final_val
 
-                    # Точечная замена значения в тексте файла с сохранением комментариев // и #
                     if isinstance(final_val, bool):
                         bool_str = "true" if final_val else "false"
                         if re.search(r'"' + key + r'"\s*:\s*(true|false)', raw_content):
@@ -272,8 +268,8 @@ def init_server(config):
     @app.route('/api/play', methods=['POST'])
     async def play_sound(request):
         """
-        Предварительное прослушивание аудио из UI.
-        Воспроизводится с учётом настроек повторов, лимита времени, плавного затухания и возобновления позиции.
+        Ознакомительное воспроизведение из UI.
+        Запускается в режиме 'ui' (1 повтор, «как есть», без лимитов и затуханий).
         """
         log.info("[TRACE ENTER] play_sound()")
         required_password = config.get('upload_password', '')
@@ -292,21 +288,9 @@ def init_server(config):
             log.info("[TRACE EXIT] play_sound -> 404 File Not Found")
             return {'error': 'Файл на ESP32 не найден! Сначала загрузите аудио.'}, 404, {'Content-Type': 'application/json'}
 
-        log.info("[UI PLAY] Воспроизведение аудио из UI панелей.")
+        log.info("[UI PLAY] Ознакомительное воспроизведение аудио из UI.")
 
-        resume_enabled = config.get('resume_playback', True)
-        saved_pos = config.get('last_play_pos_bytes', 0)
-        saved_sec = config.get('last_play_pos_sec', 0)
-
-        asyncio.create_task(player.play(
-            filepath,
-            repeat_count=config.get('repeat_count', 1),
-            max_duration_sec=config.get('max_play_duration_sec', 0),
-            fade_out_ms=config.get('fade_out_ms', 1000),
-            resume_playback=resume_enabled,
-            start_pos_bytes=saved_pos,
-            start_pos_sec=saved_sec
-        ))
+        asyncio.create_task(player.play(filepath))
         log.info("[TRACE EXIT] play_sound -> 200 playing task started")
         return {'status': 'playing'}, 200, {'Content-Type': 'application/json'}
 
@@ -409,7 +393,6 @@ def init_server(config):
                     remaining -= len(chunk)
                     await asyncio.sleep_ms(1)
 
-            # Сброс позиционирования при загрузке нового файла
             config['last_play_pos_bytes'] = 0
             config['last_play_pos_sec'] = 0
             try:
