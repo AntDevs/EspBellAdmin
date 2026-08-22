@@ -249,6 +249,7 @@ async function loadConfigData() {
             document.getElementById('cfg_max_duration').value = cfg.max_play_duration_sec || 0;
             document.getElementById('cfg_fade_out').value = cfg.fade_out_ms || 1000;
             document.getElementById('cfg_smart_timeout').value = cfg.smart_timeout_sec || 7;
+            document.getElementById('cfg_auth_smart_timeout').value = cfg.auth_smart_timeout_sec || 600;
             document.getElementById('cfg_last_pos_sec').value = cfg.last_play_pos_sec !== undefined ? cfg.last_play_pos_sec : 0;
             document.getElementById('cfg_resume_playback').checked = !!cfg.resume_playback;
             document.getElementById('cfg_wifi_ssid').value = cfg.wifi_ssid || '';
@@ -279,6 +280,7 @@ async function saveConfig(e) {
         max_play_duration_sec: parseInt(document.getElementById('cfg_max_duration').value),
         fade_out_ms: parseInt(document.getElementById('cfg_fade_out').value),
         smart_timeout_sec: parseInt(document.getElementById('cfg_smart_timeout').value),
+        auth_smart_timeout_sec: parseInt(document.getElementById('cfg_auth_smart_timeout').value),
         last_play_pos_sec: parseFloat(document.getElementById('cfg_last_pos_sec').value) || 0,
         resume_playback: document.getElementById('cfg_resume_playback').checked,
         wifi_ssid: document.getElementById('cfg_wifi_ssid').value,

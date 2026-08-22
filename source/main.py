@@ -83,6 +83,8 @@ def load_config():
         # Дефолтная конфигурация на случай отсутствия или повреждения config.json
         fallback_cfg = {
             "boot_mode": "default",
+            "smart_timeout_sec": 7,
+            "auth_smart_timeout_sec": 600,
             "repeat_count": 1,
             "max_play_duration_sec": 0,
             "fade_out_ms": 1000,
@@ -245,6 +247,10 @@ def main():
     """Главная точка входа приложения."""
     log.info("[TRACE ENTER] main()")
     gc.collect()
+    
+    # Фиксируем удержание питания сразу в главном методе управления
+    power_mgr.hold_power()
+
     config = load_config()
 
     # Проверка и авто-создание структуры необходимых системных и HAL папок
@@ -275,7 +281,7 @@ def main():
     loop.set_exception_handler(handle_async_exception)
 
     # Запуск фонового Smart Timeout для автоматического обесточивания системы
-    timeout_sec = config.get('smart_timeout_sec', 5)
+    timeout_sec = config.get('smart_timeout_sec', 7)
     loop.create_task(power_mgr.start_smart_timeout(mode, timeout_sec=timeout_sec))
 
     # Ленивый импорт веб-сервера и UI-плеера после завершения работы автономного HAL плеера

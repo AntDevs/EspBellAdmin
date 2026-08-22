@@ -170,6 +170,7 @@ def init_server(config):
         safe_cfg = {
             'boot_mode': config.get('boot_mode', 'music_first'),
             'smart_timeout_sec': config.get('smart_timeout_sec', 7),
+            'auth_smart_timeout_sec': config.get('auth_smart_timeout_sec', 600),
             'repeat_count': config.get('repeat_count', 1),
             'max_play_duration_sec': config.get('max_play_duration_sec', 0),
             'fade_out_ms': config.get('fade_out_ms', 1000),
@@ -204,7 +205,7 @@ def init_server(config):
                 raw_content = fr.read()
 
             updatable = [
-                'boot_mode', 'smart_timeout_sec', 'repeat_count',
+                'boot_mode', 'smart_timeout_sec', 'auth_smart_timeout_sec', 'repeat_count',
                 'max_play_duration_sec', 'fade_out_ms', 'resume_playback',
                 'last_play_pos_bytes', 'last_play_pos_sec',
                 'wifi_ssid', 'wifi_password', 'upload_password', 'ap_ssid', 'ap_password'
@@ -232,7 +233,7 @@ def init_server(config):
                         else:
                             final_val = str(enc_res)
                     else:
-                        if key in ['repeat_count', 'max_play_duration_sec', 'fade_out_ms', 'smart_timeout_sec', 'last_play_pos_bytes']:
+                        if key in ['repeat_count', 'max_play_duration_sec', 'fade_out_ms', 'smart_timeout_sec', 'auth_smart_timeout_sec', 'last_play_pos_bytes']:
                             final_val = int(val)
                         elif key == 'resume_playback':
                             final_val = bool(val)
@@ -323,7 +324,9 @@ def init_server(config):
         required_password = config.get('upload_password', '')
         is_auth_ok, auth_msg = security.verify_upload_auth(request, required_password)
         if is_auth_ok:
-            log.info("[TRACE EXIT] verify_auth -> ok")
+            auth_timeout = config.get('auth_smart_timeout_sec', 600)
+            power_mgr.set_timeout(auth_timeout)
+            log.info("[TRACE EXIT] verify_auth -> ok (timeout updated to %s s)", auth_timeout)
             return {'status': 'ok'}, 200, {'Content-Type': 'application/json'}
         else:
             log.info("[TRACE EXIT] verify_auth -> error")
