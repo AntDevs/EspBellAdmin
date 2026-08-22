@@ -332,6 +332,20 @@ def init_server(config):
             log.info("[TRACE EXIT] verify_auth -> error")
             return {'error': auth_msg}, 401, {'Content-Type': 'application/json'}
 
+    # REST API для явного выхода пользователя с возвратом таймаута в состояние до авторизации
+    @app.route('/api/logout', methods=['POST'])
+    async def logout_api(request):
+        log.info("[TRACE ENTER] logout_api()")
+        try:
+            default_timeout = config.get('smart_timeout_sec', 7)
+            power_mgr.set_timeout(default_timeout)
+            log.info("[TRACE EXIT] logout_api -> ok (timeout reset to %s s)", default_timeout)
+            return {'status': 'ok'}, 200, {'Content-Type': 'application/json'}
+        except Exception as e:
+            log.error(f"Ошибка при сбросе таймаута во время выхода: {e}")
+            log.info("[TRACE EXIT] logout_api -> exception")
+            return {'error': f'Ошибка выхода: {e}'}, 500, {'Content-Type': 'application/json'}
+
     @app.route('/upload', methods=['POST'])
     async def upload(request):
         log.info("[TRACE ENTER] upload()")

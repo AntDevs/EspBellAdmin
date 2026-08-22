@@ -149,6 +149,7 @@ async function loadView(viewName) {
         container.innerHTML = `
             <div class="card">
                 <div class="icon-header">⚠️</div>
+                // ...
                 <h2>Ошибка загрузки экрана</h2>
                 <p style="color: #ef4444; text-align: center; font-size: 14px; word-break: break-word;">${err.message}</p>
                 <button onclick="loadView('${viewName}')">Повторить</button>
@@ -504,8 +505,15 @@ async function stopOnEsp32() {
     }
 }
 
-function logout() {
+async function logout() {
     console.log("[TRACE ENTER] logout");
+    try {
+        await fetch('/api/logout', { method: 'POST' });
+        console.log("[TRACE EXIT] logout -> Reset server timeout success");
+    } catch (err) {
+        console.error("[TRACE EXIT] logout -> Error notifying server", err);
+    }
+
     savedPassword = "";
     if (currentAudioUrl) {
         URL.revokeObjectURL(currentAudioUrl);
