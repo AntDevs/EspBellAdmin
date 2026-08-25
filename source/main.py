@@ -13,7 +13,7 @@ import io
 from logger import setup_logging
 from app.security import SecurityManager
 from hal.power_manager import power_mgr
-from hal.indicator import set_moonlight_color
+from hal.indicator import start_led_loop
 
 # Инициализация глобального системного логгера для главного файла управления
 setup_logging(logging.INFO)
@@ -280,9 +280,13 @@ def main():
     loop = asyncio.get_event_loop()
     loop.set_exception_handler(handle_async_exception)
 
-    # Запуск фонового Smart Timeout для автоматического обесточивания системы
+    # 1. Единый запуск асинхронной задачи автоотключения (по умолчанию 7 секунд)
     timeout_sec = config.get('smart_timeout_sec', 7)
     loop.create_task(power_mgr.start_smart_timeout(mode, timeout_sec=timeout_sec))
+
+    # 2. Единый запуск фоновой задачи управления светодиодом WS2812
+    led_pin = config.get('led_pin', 48)
+    loop.create_task(start_led_loop(pin_num=led_pin))
 
     # Ленивый импорт веб-сервера и UI-плеера после завершения работы автономного HAL плеера
     from app.server import init_server, start_server
@@ -302,10 +306,6 @@ def main():
         log.info(f"Доступ к панели управления по имени: {proto}://{hostname} или {proto}://{hostname}.local")
     else:
         log.info(f"Подключитесь к Wi-Fi '{config.get('ap_ssid', 'ESP32-Config')}' и откройте адрес: {proto}://{ip}")
-
-    # Включение светодиодной индикации готовности сервера к обработке запросов
-    led_pin = config.get('led_pin', 48)
-    set_moonlight_color(pin_num=led_pin)
 
     # Старт основного бесконечного цикла веб-сервера
     start_server(app, host, port, cert_file=cert_path, key_file=key_path)

@@ -38,7 +38,8 @@ def init_server(config):
         try:
             stat = os.statvfs('/')
             res = stat[0] * stat[4]
-        except Exception:
+        except Exception as e:
+            log.error(f"Ошибка получения свободного места: {e}")
             res = 0
         log.info("[TRACE EXIT] get_free_space -> %s B", res)
         return res
@@ -50,14 +51,18 @@ def init_server(config):
         try:
             for f in os.listdir(media_dir):
                 total += os.stat(f"{media_dir}/{f}")[6]
-        except Exception:
-            pass
+        except Exception as e:
+            log.error(f"Ошибка подсчета размера файлов media: {e}")
         log.info("[TRACE EXIT] get_media_size -> %s B", total)
         return total
 
     def get_available_space():
         log.info("[TRACE ENTER] get_available_space()")
-        res = get_free_space() + get_media_size()
+        try:
+            res = get_free_space() + get_media_size()
+        except Exception as e:
+            log.error(f"Ошибка расчета доступного места: {e}")
+            res = 0
         log.info("[TRACE EXIT] get_available_space -> %s B", res)
         return res
 
@@ -75,27 +80,38 @@ def init_server(config):
 
     def safe_decrypt(val):
         log.info("[TRACE ENTER] safe_decrypt(val_len=%s)", len(str(val)))
-        res = security.decrypt_str(val)
-        if isinstance(res, (tuple, list)):
-            out = str(res[1]) if len(res) > 1 else str(res[0])
-        else:
-            out = str(res)
+        try:
+            res = security.decrypt_str(val)
+            if isinstance(res, (tuple, list)):
+                out = str(res[1]) if len(res) > 1 else str(res[0])
+            else:
+                out = str(res)
+        except Exception as e:
+            log.error(f"Ошибка в safe_decrypt: {e}")
+            out = ""
         log.info("[TRACE EXIT] safe_decrypt")
         return out
 
     @app.before_request
     async def log_request(request):
         log.info("[TRACE ENTER] log_request(path=%s, method=%s)", request.path, request.method)
-        gc.collect()
-        power_mgr.notify_activity()
-        log.info(f"{request.method} {request.path} | Free RAM: {gc.mem_free()} B")
+        try:
+            gc.collect()
+            # Каждое обращение к серверу (включая загрузку экрана авторизации) начинает отсчет smart_timeout заново
+            power_mgr.notify_activity()
+            log.info(f"{request.method} {request.path} | Free RAM: {gc.mem_free()} B")
+        except Exception as e:
+            log.error(f"Ошибка в log_request: {e}")
         log.info("[TRACE EXIT] log_request")
 
     @app.after_request
     async def cleanup_connection(request, response):
         log.info("[TRACE ENTER] cleanup_connection(path=%s)", request.path)
-        response.headers['Connection'] = 'close'
-        gc.collect()
+        try:
+            response.headers['Connection'] = 'close'
+            gc.collect()
+        except Exception as e:
+            log.error(f"Ошибка в cleanup_connection: {e}")
         log.info("[TRACE EXIT] cleanup_connection")
         return response
 
@@ -127,8 +143,12 @@ def init_server(config):
     @app.route('/')
     async def index(request):
         log.info("[TRACE ENTER] index()")
-        index_path = config.get('html_index_path', 'app/www/index.html')
-        res = send_file(index_path)
+        try:
+            index_path = config.get('html_index_path', 'app/www/index.html')
+            res = send_file(index_path)
+        except Exception as e:
+            log.error(f"Ошибка отдачи index.html: {e}")
+            res = 'Internal Error', 500
         log.info("[TRACE EXIT] index")
         return res
 
@@ -141,19 +161,26 @@ def init_server(config):
             res = send_file(file_path)
         except OSError:
             res = 'File not found', 404
+        except Exception as e:
+            log.error(f"Ошибка доступа к статическому файлу {file_path}: {e}")
+            res = 'Error', 500
         log.info("[TRACE EXIT] serve_www")
         return res
 
     @app.route('/api/info')
     async def api_info(request):
         log.info("[TRACE ENTER] api_info()")
-        data = {
-            'availableBytes': get_available_space(),
-            'maxFileBytes': max_size,
-            'allowedExtensions': config.get('allowed_extensions', ['mp3', 'wav']),
-            'isPlaying': player.is_playing
-        }
-        res = data, 200, {'Content-Type': 'application/json'}
+        try:
+            data = {
+                'availableBytes': get_available_space(),
+                'maxFileBytes': max_size,
+                'allowedExtensions': config.get('allowed_extensions', ['mp3', 'wav']),
+                'isPlaying': player.is_playing
+            }
+            res = data, 200, {'Content-Type': 'application/json'}
+        except Exception as e:
+            log.error(f"Ошибка запроса api_info: {e}")
+            res = {'error': str(e)}, 500, {'Content-Type': 'application/json'}
         log.info("[TRACE EXIT] api_info")
         return res
 
@@ -161,29 +188,34 @@ def init_server(config):
     @app.route('/api/config', methods=['GET'])
     async def get_config_api(request):
         log.info("[TRACE ENTER] get_config_api()")
-        required_password = config.get('upload_password', '')
-        is_auth_ok, auth_msg = security.verify_upload_auth(request, required_password)
-        if not is_auth_ok:
-            log.info("[TRACE EXIT] get_config_api -> 401 Unauthorized")
-            return {'error': auth_msg}, 401, {'Content-Type': 'application/json'}
+        try:
+            required_password = config.get('upload_password', '')
+            is_auth_ok, auth_msg = security.verify_upload_auth(request, required_password)
+            if not is_auth_ok:
+                log.info("[TRACE EXIT] get_config_api -> 401 Unauthorized")
+                return {'error': auth_msg}, 401, {'Content-Type': 'application/json'}
 
-        safe_cfg = {
-            'boot_mode': config.get('boot_mode', 'music_first'),
-            'smart_timeout_sec': config.get('smart_timeout_sec', 7),
-            'auth_smart_timeout_sec': config.get('auth_smart_timeout_sec', 600),
-            'repeat_count': config.get('repeat_count', 1),
-            'max_play_duration_sec': config.get('max_play_duration_sec', 0),
-            'fade_out_ms': config.get('fade_out_ms', 1000),
-            'resume_playback': config.get('resume_playback', True),
-            'last_play_pos_bytes': config.get('last_play_pos_bytes', 0),
-            'last_play_pos_sec': config.get('last_play_pos_sec', 0),
-            'wifi_ssid': config.get('wifi_ssid', ''),
-            'upload_password': safe_decrypt(config.get('upload_password', '')),
-            'ap_ssid': config.get('ap_ssid', 'ESP32-Config'),
-            'ap_password': safe_decrypt(config.get('ap_password', 'anton123'))
-        }
+            safe_cfg = {
+                'boot_mode': config.get('boot_mode', 'music_first'),
+                'smart_timeout_sec': config.get('smart_timeout_sec', 7),
+                'auth_smart_timeout_sec': config.get('auth_smart_timeout_sec', 600),
+                'repeat_count': config.get('repeat_count', 1),
+                'max_play_duration_sec': config.get('max_play_duration_sec', 0),
+                'fade_out_ms': config.get('fade_out_ms', 1000),
+                'resume_playback': config.get('resume_playback', True),
+                'last_play_pos_bytes': config.get('last_play_pos_bytes', 0),
+                'last_play_pos_sec': config.get('last_play_pos_sec', 0),
+                'wifi_ssid': config.get('wifi_ssid', ''),
+                'upload_password': safe_decrypt(config.get('upload_password', '')),
+                'ap_ssid': config.get('ap_ssid', 'ESP32-Config'),
+                'ap_password': safe_decrypt(config.get('ap_password', 'anton123'))
+            }
+            res = safe_cfg, 200, {'Content-Type': 'application/json'}
+        except Exception as e:
+            log.error(f"Ошибка чтения конфигурации: {e}")
+            res = {'error': str(e)}, 500, {'Content-Type': 'application/json'}
         log.info("[TRACE EXIT] get_config_api -> 200 OK")
-        return safe_cfg, 200, {'Content-Type': 'application/json'}
+        return res
 
     # REST API для обновления и сохранения параметров в config.json с сохранением комментариев
     @app.route('/api/config', methods=['POST'])
@@ -290,7 +322,6 @@ def init_server(config):
             return {'error': 'Файл на ESP32 не найден! Сначала загрузите аудио.'}, 404, {'Content-Type': 'application/json'}
 
         log.info("[UI PLAY] Ознакомительное воспроизведение аудио из UI.")
-
         asyncio.create_task(player.play(filepath))
         log.info("[TRACE EXIT] play_sound -> 200 playing task started")
         return {'status': 'playing'}, 200, {'Content-Type': 'application/json'}
@@ -313,36 +344,41 @@ def init_server(config):
     @app.route('/api/get-nonce')
     async def get_nonce(request):
         log.info("[TRACE ENTER] get_nonce()")
-        nonce = security.generate_nonce()
-        res = {'nonce': nonce}, 200, {'Content-Type': 'application/json'}
-        log.info("[TRACE EXIT] get_nonce -> %s", nonce)
+        try:
+            nonce = security.generate_nonce()
+            res = {'nonce': nonce}, 200, {'Content-Type': 'application/json'}
+        except Exception as e:
+            log.error(f"Ошибка генерации nonce: {e}")
+            res = {'error': str(e)}, 500, {'Content-Type': 'application/json'}
+        log.info("[TRACE EXIT] get_nonce")
         return res
 
     @app.route('/api/verify-auth', methods=['POST'])
     async def verify_auth(request):
+        """Переключение в авторизованный режим: таймаут 600 сек + небесно-голубой цвет."""
         log.info("[TRACE ENTER] verify_auth()")
         required_password = config.get('upload_password', '')
         is_auth_ok, auth_msg = security.verify_upload_auth(request, required_password)
         if is_auth_ok:
             auth_timeout = config.get('auth_smart_timeout_sec', 600)
             power_mgr.set_timeout(auth_timeout)
-            log.info("[TRACE EXIT] verify_auth -> ok (timeout updated to %s s)", auth_timeout)
+            log.info("[TRACE EXIT] verify_auth -> ok (timeout: %s s, mode: moonlight)", auth_timeout)
             return {'status': 'ok'}, 200, {'Content-Type': 'application/json'}
         else:
             log.info("[TRACE EXIT] verify_auth -> error")
             return {'error': auth_msg}, 401, {'Content-Type': 'application/json'}
 
-    # REST API для явного выхода пользователя с возвратом таймаута в состояние до авторизации
     @app.route('/api/logout', methods=['POST'])
     async def logout_api(request):
+        """Возврат в стартовый режим: таймаут 7 сек + мигалка «полиция» + сброс отсчета на 0."""
         log.info("[TRACE ENTER] logout_api()")
         try:
             default_timeout = config.get('smart_timeout_sec', 7)
             power_mgr.set_timeout(default_timeout)
-            log.info("[TRACE EXIT] logout_api -> ok (timeout reset to %s s)", default_timeout)
+            log.info("[TRACE EXIT] logout_api -> ok (timeout: %s s, mode: police)", default_timeout)
             return {'status': 'ok'}, 200, {'Content-Type': 'application/json'}
         except Exception as e:
-            log.error(f"Ошибка при сбросе таймаута во время выхода: {e}")
+            log.error(f"Ошибка сброса таймаута при выходе: {e}")
             log.info("[TRACE EXIT] logout_api -> exception")
             return {'error': f'Ошибка выхода: {e}'}, 500, {'Content-Type': 'application/json'}
 

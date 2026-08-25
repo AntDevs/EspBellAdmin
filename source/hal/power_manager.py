@@ -17,6 +17,7 @@ def hold_power_early():
     Быстрый вызов для boot.py.
     Защелкивает реле на самом раннем этапе (до инициализации логгеров).
     """
+    print("[TRACE ENTER] hold_power_early()")
     try:
         p = machine.Pin(POWER_PIN, machine.Pin.OUT)
         p.value(1)
@@ -24,6 +25,7 @@ def hold_power_early():
         print(f"[BOOT] Раннее защелкивание реле на GPIO{POWER_PIN} выполнено.")
     except Exception as exc:
         print(f"[BOOT ERROR] Сбой раннего защелкивания питания: {exc}")
+    print("[TRACE EXIT] hold_power_early")
 
 
 class PowerManager:
@@ -57,12 +59,19 @@ class PowerManager:
         log.info("[TRACE EXIT] PowerManager.notify_activity")
 
     def set_timeout(self, timeout_sec):
-        """Динамически переключает таймаут (например, при успешной авторизации)."""
+        """Единый метод обновления таймаута и режима индикации."""
         log.info("[TRACE ENTER] PowerManager.set_timeout(timeout_sec=%s)", timeout_sec)
         try:
             self.current_timeout_sec = int(timeout_sec)
             self.notify_activity()
-            log.info(f"[POWER_MGR] Установлен новый таймаут автоотключения: {self.current_timeout_sec} сек.")
+
+            from hal.indicator import set_led_mode
+            if self.current_timeout_sec > 30:
+                set_led_mode("moonlight")
+            else:
+                set_led_mode("police")
+
+            log.info(f"[POWER_MGR] Новый таймаут: {self.current_timeout_sec} сек.")
         except Exception as exc:
             self._log_traceback("Ошибка установки нового таймаута", exc)
         log.info("[TRACE EXIT] PowerManager.set_timeout")
@@ -117,12 +126,11 @@ class PowerManager:
         """
         Асинхронный Smart Timeout:
         Сбрасывает отсчет при старте и обесточивает систему при отсутствии HTTP-активности.
+        Единственная точка управления автоотключением в системе.
         """
         log.info("[TRACE ENTER] PowerManager.start_smart_timeout(mode=%s, timeout_sec=%s)", mode, timeout_sec)
-        self.current_timeout_sec = int(timeout_sec)
-        self.notify_activity()
+        self.set_timeout(timeout_sec)
         
-        log.info(f"[SMART TIMEOUT START] Старт отслеживания активности приложения на {self.current_timeout_sec} сек...")
         try:
             while True:
                 await asyncio.sleep(1)
@@ -130,7 +138,7 @@ class PowerManager:
                 timeout_ms = self.current_timeout_sec * 1000
 
                 if elapsed_ms >= timeout_ms:
-                    log.info(f"[SMART TIMEOUT END] Нет активности в приложении {self.current_timeout_sec} сек. Выход с обесточиванием системы...")
+                    log.info(f"[SMART TIMEOUT END] Выход с обесточиванием системы ({self.current_timeout_sec} сек без активности)...")
                     self.shutdown()
                     break
 
@@ -143,9 +151,14 @@ class PowerManager:
 
     def _log_traceback(self, context_msg, exc):
         """Перехватчик исключений с записью трейсбэков."""
-        buf = io.StringIO()
-        sys.print_exception(exc, buf)
-        log.error(f"{context_msg}: {exc}\nПодробный трейсбэк:\n{buf.getvalue()}")
+        log.info("[TRACE ENTER] PowerManager._log_traceback()")
+        try:
+            buf = io.StringIO()
+            sys.print_exception(exc, buf)
+            log.error(f"{context_msg}: {exc}\nПодробный трейсбэк:\n{buf.getvalue()}")
+        except Exception as e:
+            log.error(f"Сбой логирования исключения: {e}")
+        log.info("[TRACE EXIT] PowerManager._log_traceback")
 
 
 # Глобальный экземпляр для экспорта
