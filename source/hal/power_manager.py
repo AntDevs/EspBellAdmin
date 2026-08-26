@@ -23,6 +23,8 @@ def hold_power_early():
         p.value(1)
         # На этапе boot.py логгер еще не создан, вывод идет в стандартную консоль UART
         print(f"[BOOT] Раннее защелкивание реле на GPIO{POWER_PIN} выполнено.")
+        # 3. Пауза для сглаживания индуктивного броска катушки реле
+        time.sleep_ms(300)
     except Exception as exc:
         print(f"[BOOT ERROR] Сбой раннего защелкивания питания: {exc}")
     print("[TRACE EXIT] hold_power_early")

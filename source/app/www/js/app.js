@@ -4,6 +4,44 @@ let savedAvailableBytes = 0;
 let savedAllowedExtensions = ['mp3', 'wav'];
 let currentAudioUrl = null;
 let convertedWavBlob = null;
+let isEsp32Playing = false;
+
+function updatePlayButtonUI(isPlaying) {
+    console.log("[TRACE ENTER] updatePlayButtonUI", isPlaying);
+    try {
+        const btn = document.getElementById('togglePlayBtn');
+        if (btn) {
+            if (isPlaying) {
+                btn.innerHTML = "⏹ Стоп";
+                btn.style.backgroundColor = "#ef4444";
+                btn.className = "btn-secondary";
+                btn.style.marginTop = "0";
+            } else {
+                btn.innerHTML = "▶ Проиграть";
+                btn.style.backgroundColor = "#10b981";
+                btn.className = "";
+                btn.style.marginTop = "0";
+            }
+        }
+    } catch (err) {
+        console.error("[TRACE EXIT] updatePlayButtonUI -> error", err);
+    }
+    console.log("[TRACE EXIT] updatePlayButtonUI");
+}
+
+async function toggleEsp32Audio() {
+    console.log("[TRACE ENTER] toggleEsp32Audio", { isEsp32Playing });
+    try {
+        if (!isEsp32Playing) {
+            await playOnEsp32();
+        } else {
+            await stopOnEsp32();
+        }
+    } catch (err) {
+        console.error("[TRACE EXIT] toggleEsp32Audio -> error", err);
+    }
+    console.log("[TRACE EXIT] toggleEsp32Audio");
+}
 
 async function sha256Async(message) {
     console.log("[TRACE ENTER] sha256Async", message ? "(length: " + message.length + ")" : "");
@@ -230,6 +268,10 @@ async function loadSystemInfo() {
         if (fileInput && savedAllowedExtensions.length) {
             fileInput.accept = savedAllowedExtensions.map(e => '.' + e.toLowerCase().replace(/^\./, '')).join(',');
         }
+
+        isEsp32Playing = !!data.isPlaying;
+        updatePlayButtonUI(isEsp32Playing);
+
         console.log("[TRACE EXIT] loadSystemInfo -> Loaded info", data);
     } catch (e) {
         console.error("[TRACE EXIT] loadSystemInfo -> Exception", e);
@@ -479,14 +521,20 @@ async function playOnEsp32() {
         const result = await resp.json();
         if (resp.ok) {
             status.innerHTML = `<span style="color: #10b981;">▶ Воспроизведение заведено на ESP32</span>`;
+            isEsp32Playing = true;
+            updatePlayButtonUI(true);
             console.log("[TRACE EXIT] playOnEsp32 -> Playing started");
         } else {
             status.innerHTML = `<span style="color: #ef4444;">❌ ${result.error || 'Ошибка воспроизведения'}</span>`;
+            isEsp32Playing = false;
+            updatePlayButtonUI(false);
             console.warn("[TRACE EXIT] playOnEsp32 -> Server rejected play request", result);
         }
     } catch (err) {
         console.error("[TRACE EXIT] playOnEsp32 -> Exception", err);
         status.innerHTML = `<span style="color: #ef4444;">❌ Сбой соединения с ESP32</span>`;
+        isEsp32Playing = false;
+        updatePlayButtonUI(false);
     }
 }
 
@@ -515,6 +563,9 @@ async function stopOnEsp32() {
     } catch (err) {
         console.error("[TRACE EXIT] stopOnEsp32 -> Exception", err);
         status.innerHTML = `<span style="color: #ef4444;">❌ Сбой соединения с ESP32</span>`;
+    } finally {
+        isEsp32Playing = false;
+        updatePlayButtonUI(false);
     }
 }
 
@@ -533,6 +584,7 @@ async function logout() {
         currentAudioUrl = null;
     }
     convertedWavBlob = null;
+    isEsp32Playing = false;
     console.log("[TRACE EXIT] logout");
     loadView('login.html');
 }
