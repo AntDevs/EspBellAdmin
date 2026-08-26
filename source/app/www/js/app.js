@@ -180,8 +180,83 @@ function audioBufferToWavBlob(audioBuffer, maxSizeBytes) {
     }
 }
 
+async function loadMainView(defaultTab = 'upload') {
+    console.log("[TRACE ENTER] loadMainView", defaultTab);
+    const container = document.getElementById('app-container');
+    try {
+        const response = await fetch('/www/main.html');
+        if (!response.ok) {
+            throw new Error(`Не удалось загрузить /www/main.html (Код: ${response.status})`);
+        }
+        container.innerHTML = await response.text();
+        console.log("[TRACE EXIT] loadMainView -> main layout loaded");
+        await switchTab(defaultTab);
+    } catch (err) {
+        console.error("[TRACE EXIT] loadMainView -> error", err);
+        container.innerHTML = `
+            <div class="card">
+                <div class="icon-header">⚠️</div>
+                <h2>Ошибка загрузки контейнера</h2>
+                <p style="color: #ef4444; text-align: center; font-size: 14px; word-break: break-word;">${err.message}</p>
+                <button onclick="loadMainView('${defaultTab}')">Повторить</button>
+            </div>`;
+    }
+}
+
+async function switchTab(tabName) {
+    console.log("[TRACE ENTER] switchTab", tabName);
+    const tabContent = document.getElementById('tab-content');
+    const tabBtnAudio = document.getElementById('tabBtnAudio');
+    const tabBtnConfig = document.getElementById('tabBtnConfig');
+
+    if (!tabContent) {
+        console.warn("[TRACE EXIT] switchTab -> tab-content container not found, loading main view");
+        await loadMainView(tabName);
+        return;
+    }
+
+    if (tabBtnAudio && tabBtnConfig) {
+        if (tabName === 'upload') {
+            tabBtnAudio.classList.add('active');
+            tabBtnConfig.classList.remove('active');
+        } else if (tabName === 'config') {
+            tabBtnConfig.classList.add('active');
+            tabBtnAudio.classList.remove('active');
+        }
+    }
+
+    const fileName = tabName + '.html';
+    try {
+        const response = await fetch('/www/' + fileName);
+        if (!response.ok) {
+            throw new Error(`Не удалось загрузить /www/${fileName} (Код: ${response.status})`);
+        }
+        tabContent.innerHTML = await response.text();
+
+        if (tabName === 'upload') {
+            loadSystemInfo();
+        } else if (tabName === 'config') {
+            loadConfigData();
+        }
+        console.log("[TRACE EXIT] switchTab -> success", tabName);
+    } catch (err) {
+        console.error("[TRACE EXIT] switchTab -> error", err);
+        tabContent.innerHTML = `
+            <div style="padding: 20px; text-align: center;">
+                <p style="color: #ef4444; font-size: 14px;">${err.message}</p>
+                <button onclick="switchTab('${tabName}')">Повторить</button>
+            </div>`;
+    }
+}
+
 async function loadView(viewName) {
     console.log("[TRACE ENTER] loadView", viewName);
+    if (viewName !== 'login.html') {
+        const tabName = viewName.replace('.html', '');
+        await loadMainView(tabName);
+        console.log("[TRACE EXIT] loadView -> redirected to loadMainView", tabName);
+        return;
+    }
     const container = document.getElementById('app-container');
     try {
         const response = await fetch('/www/' + viewName);
@@ -189,12 +264,6 @@ async function loadView(viewName) {
             throw new Error(`Не удалось загрузить /www/${viewName} (Код: ${response.status})`);
         }
         container.innerHTML = await response.text();
-
-        if (viewName === 'upload.html') {
-            loadSystemInfo();
-        } else if (viewName === 'config.html') {
-            loadConfigData();
-        }
         console.log("[TRACE EXIT] loadView -> success", viewName);
     } catch (err) {
         console.error("[TRACE EXIT] loadView -> error", err);
@@ -234,7 +303,7 @@ async function handleLogin(e) {
         if (verifyResp.ok) {
             savedPassword = pwdInput;
             console.log("[TRACE EXIT] handleLogin -> Auth successful");
-            loadView('upload.html');
+            loadMainView('upload');
         } else {
             const errData = await verifyResp.json();
             console.log("[TRACE EXIT] handleLogin -> Auth failed", errData);

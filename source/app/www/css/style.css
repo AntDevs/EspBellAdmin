@@ -99,3 +99,35 @@ button:hover { background-color: #1d4ed8; }
     color: #475569;
     word-break: break-word;
 }
+
+.tabs-container {
+    display: flex;
+    border-bottom: 2px solid #e2e8f0;
+    margin-bottom: 20px;
+}
+
+.tab-btn {
+    flex: 1;
+    padding: 10px 16px;
+    font-size: 14px;
+    font-weight: 600;
+    background: transparent !important;
+    color: #64748b !important;
+    border: none !important;
+    border-bottom: 2px solid transparent !important;
+    border-radius: 0 !important;
+    margin-bottom: -2px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: none !important;
+    text-align: center;
+}
+
+.tab-btn:hover {
+    color: #1e293b !important;
+}
+
+.tab-btn.active {
+    color: #2563eb !important;
+    border-bottom-color: #2563eb !important;
+}

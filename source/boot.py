@@ -1,5 +1,9 @@
 # boot.py
-from hal.power_manager import hold_power_early
+import machine
 
-# Мгновенная защелка питания из единого модуля
-hold_power_early()
+# Мгновенная фиксация питания БЕЗ промежуточного импульса "0" (value=1)
+# и БЕЗ вызовов print(), блокирующих USB CDC при работе от БП
+try:
+    p = machine.Pin(4, machine.Pin.OUT, value=1)
+except Exception:
+    pass
