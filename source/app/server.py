@@ -480,6 +480,16 @@ def init_server(config):
     log.info("[TRACE EXIT] init_server -> app ready")
     return app
 
+    @app.route('/api/logs')
+    async def view_logs(request):
+        """Просмотр сохраненного лога работы системы."""
+        try:
+            with open('/boot.log', 'r') as f:
+                content = f.read()
+            return content, 200, {'Content-Type': 'text/plain; charset=utf-8'}
+        except OSError:
+            return 'Файл логов /boot.log не найден', 404
+
 def start_server(app, host, port, cert_file='resources/cert.crt', key_file='resources/cert.key'):
     log.info("[TRACE ENTER] start_server(host=%s, port=%s)", host, port)
     if port == 443:

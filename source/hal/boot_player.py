@@ -36,8 +36,10 @@ class StandaloneBootPlayer:
 def run_boot_audio(config):
     """Точка входа для запуска автономного аудио из main.py"""
     log.info("[TRACE ENTER] run_boot_audio()")
-    chip_mon = ChipMonitor()
-    chip_mon.diagnose_and_report()
+
+    # test anton rem 1
+    # chip_mon = ChipMonitor()
+    # chip_mon.diagnose_and_report()
 
     try:
         import machine

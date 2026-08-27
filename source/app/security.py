@@ -26,8 +26,10 @@ class SecurityManager:
     - Хеширование SHA-256 для проверки авторизации пользователей
     """
     def __init__(self, ttl_seconds=60):
+        log.info(f" Entering __init__ SecurityManager(ttl_seconds={ttl_seconds})")
         self.active_nonces = {}
         self.ttl = ttl_seconds
+        log.info(f" Exiting __init__ SecurityManager: TTL for Nonce = {self.ttl} seconds")
 
     def _get_aes_key_and_iv(self):
         """
@@ -35,6 +37,7 @@ class SecurityManager:
         SHA-256 дает 32 байта: первые 16 байт — Key, следующие 16 байт — IV.
         """
         try:
+            log.info(f" Entering _get_aes_key_and_iv")
             hw_id = machine.unique_id()
         except Exception:
             hw_id = b'esp32s3_default_hw_key'
@@ -42,12 +45,16 @@ class SecurityManager:
         digest = hashlib.sha256(hw_id).digest()
         key = digest[:16]
         iv = digest[16:32]
+        log.info(f" Exiting _get_aes_key_and_iv")
         return key, iv
 
     def encrypt_str(self, plain_text):
         """
         Аппаратное шифрование строки через AES-128 CBC с PKCS7-заполнением.
         """
+
+        log.info(f" Entering encrypt_str")
+
         if not plain_text or plain_text.startswith("ENC:"):
             return plain_text
 
@@ -66,6 +73,7 @@ class SecurityManager:
                 encrypted_bytes = bytes([b ^ key[i % len(key)] for i, b in enumerate(padded)])
 
             encoded_str = binascii.b2a_base64(encrypted_bytes).decode('utf-8').strip()
+            log.info(f" Exiting encrypt_str")
             return "ENC:" + encoded_str
         except Exception as e:
             log.error(f"Сбой шифрования: {e}")
@@ -75,6 +83,7 @@ class SecurityManager:
         """
         Расшифровка AES-128 CBC строки с защитой от смены чипа.
         """
+        log.info(f" Entering decrypt_str")
         if not enc_text or not enc_text.startswith("ENC:"):
             return enc_text
 
@@ -94,25 +103,30 @@ class SecurityManager:
             else:
                 decrypted_bytes = decrypted_padded
 
+            log.info(f" Exiting decrypt_str")   
             return decrypted_bytes.decode('utf-8')
         except Exception as e:
-            log.warning(f"Не удалось расшифровать пароль: {e}")
+            log.warning(f"Не удалось расшифровать пароль: {e}")            
             return ""
 
     def _cleanup_expired(self):
         """Очистка просроченных токенов Nonce из оперативной памяти."""
+        log.info(f" Entering _cleanup_expired")
         now = time.time()
         for nonce, ts in list(self.active_nonces.items()):
             if now - ts > self.ttl:
                 del self.active_nonces[nonce]
+        log.info(f" Exiting _cleanup_expired")
         gc.collect()
 
     def generate_nonce(self):
         """Генерация одноразового криптографического токена Nonce."""
+        log.info(f" Entering generate_nonce")
         self._cleanup_expired()
         random_bytes = os.urandom(8)
         nonce = binascii.hexlify(random_bytes).decode('utf-8')
         self.active_nonces[nonce] = time.time()
+        log.info(f" Exiting generate_nonce: nonce={nonce}")
         return nonce
 
     def hash_sha256(self, text):
@@ -122,10 +136,12 @@ class SecurityManager:
         h = hashlib.sha256(text)
         if hasattr(h, 'hexdigest'):
             return h.hexdigest()
+        log.info(f" Exiting hash_sha256")
         return binascii.hexlify(h.digest()).decode('utf-8')
 
     def verify_upload_auth(self, request, required_password):
         """Проверка авторизации входящего HTTP-запроса по сочетанию Nonce + SHA256 Hash."""
+        log.info(f" Entering verify_upload_auth")
         required_password = self.decrypt_str(required_password)
 
         if not required_password:

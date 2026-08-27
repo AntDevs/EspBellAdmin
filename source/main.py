@@ -17,6 +17,7 @@ from hal.indicator import start_led_loop
 
 # Инициализация глобального системного логгера для главного файла управления
 setup_logging(logging.INFO)
+
 log = logging.getLogger("MAIN")
 
 # Менеджер безопасности для AES-128 шифрования/расшифровки паролей
@@ -249,7 +250,8 @@ def main():
     gc.collect()
     
     # Фиксируем удержание питания сразу в главном методе управления
-    power_mgr.hold_power()
+    # anton 2
+    # power_mgr.hold_power()
 
     config = load_config()
 
