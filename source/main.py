@@ -17,7 +17,6 @@ from hal.indicator import start_led_loop
 
 # Инициализация глобального системного логгера для главного файла управления
 setup_logging(logging.INFO)
-
 log = logging.getLogger("MAIN")
 
 # Менеджер безопасности для AES-128 шифрования/расшифровки паролей
