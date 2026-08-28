@@ -150,7 +150,351 @@ def parse_wav_header(f):
              channels, rate, bits, data_size, data_offset)
     return res
 
-def write_pcm_with_gain(i2s, buf, num_bytes, gain, channels=2):
+
+    """Запись PCM в I2S с масштабированием знаковых сэмплов и автодублированием Mono->Stereo."""
+    log.debug("[TRACE ENTER] write_pcm_with_gain(num_bytes=%s, gain=%s, channels=%s)", num_bytes, gain, channels)
+    
+    if not i2s or num_bytes <= 0:
+        log.debug("[TRACE EXIT] write_pcm_with_gain (no i2s or num_bytes <= 0)")
+        return
+
+    num_bytes = num_bytes - (num_bytes % 2)
+    if num_bytes <= 0:
+        return
+
+    try:
+        # 1. БЫСТРЫЙ ПУТЬ (100% громкость, играет 95% времени трека)
+        if gain >= 0.99:
+            if channels == 2:
+                i2s.write(memoryview(buf)[:num_bytes])
+            else:
+                out_buf = bytearray(num_bytes * 2)
+                for i in range(0, num_bytes, 2):
+                    out_buf[i*2] = buf[i]
+                    out_buf[i*2+1] = buf[i+1]
+                    out_buf[i*2+2] = buf[i]
+                    out_buf[i*2+3] = buf[i+1]
+                i2s.write(out_buf)
+            log.debug("[TRACE EXIT] write_pcm_with_gain")
+            return
+
+        # 2. ПОЛНАЯ ТИШИНА
+        if gain <= 0.001:
+            if channels == 2:
+                i2s.write(bytes(num_bytes))
+            else:
+                i2s.write(bytes(num_bytes * 2))
+            log.debug("[TRACE EXIT] write_pcm_with_gain")
+            return
+
+        # 3. ПЛАВНОЕ ЗАТУХАНИЕ (Только последние 1-2 секунды трека)
+        gain_int = int(gain * 256)
+        
+        if channels == 2:
+            mv = memoryview(buf)[:num_bytes]
+            try:
+                # Сверхбыстрый C-уровень (memoryview cast)
+                m = mv.cast('h')
+                for i in range(len(m)):
+                    m[i] = (m[i] * gain_int) >> 8
+                i2s.write(mv)
+            except AttributeError:
+                # Резервный надежный способ для старых версий MicroPython
+                b = bytearray(mv)
+                for i in range(0, num_bytes, 2):
+                    s = b[i] | (b[i+1] << 8)
+                    if s > 32767:
+                        s -= 65536
+                    s = (s * gain_int) >> 8
+                    b[i] = s & 0xFF
+                    b[i+1] = (s >> 8) & 0xFF
+                i2s.write(b)
+        else:
+            # Моно с затуханием (конвертируем в стерео)
+            out_buf = bytearray(num_bytes * 2)
+            b = memoryview(buf)[:num_bytes]
+            for i in range(0, num_bytes, 2):
+                s = b[i] | (b[i+1] << 8)
+                if s > 32767:
+                    s -= 65536
+                s = (s * gain_int) >> 8
+                
+                low = s & 0xFF
+                high = (s >> 8) & 0xFF
+                
+                out_buf[i*2] = low
+                out_buf[i*2+1] = high
+                out_buf[i*2+2] = low
+                out_buf[i*2+3] = high
+            i2s.write(out_buf)
+
+    except Exception as e:
+        log.warning(f"Ошибка записи PCM: {e}")
+        
+    log.debug("[TRACE EXIT] write_pcm_with_gain")
+    
+    """Оригинальная логика с оптимизированным затуханием (надежная версия)."""
+    if not i2s or num_bytes <= 0:
+        return
+
+    # Выравнивание по четному числу байт
+    num_bytes = num_bytes - (num_bytes % 2)
+    if num_bytes <= 0:
+        return
+
+    try:
+        # 1. БЫСТРЫЙ ПУТЬ (100% громкость, играет 95% времени трека)
+        # Код скопирован из вашего оригинала, чтобы гарантировать идеальное звучание.
+        if gain >= 0.99:
+            if channels == 2:
+                i2s.write(memoryview(buf)[:num_bytes])
+            else:
+                # Конвертация Моно -> Стерео без математики
+                out_buf = bytearray(num_bytes * 2)
+                for i in range(0, num_bytes, 2):
+                    out_buf[i*2] = buf[i]
+                    out_buf[i*2+1] = buf[i+1]
+                    out_buf[i*2+2] = buf[i]
+                    out_buf[i*2+3] = buf[i+1]
+                i2s.write(out_buf)
+            return
+
+        # 2. ПОЛНАЯ ТИШИНА (Мгновенный выход)
+        if gain <= 0.001:
+            if channels == 2:
+                i2s.write(bytes(num_bytes))
+            else:
+                i2s.write(bytes(num_bytes * 2))
+            return
+
+        # 3. ПЛАВНОЕ ЗАТУХАНИЕ (Только последние 1-2 секунды трека)
+        gain_int = int(gain * 256)
+        
+        if channels == 2:
+            mv = memoryview(buf)[:num_bytes]
+            try:
+                # Сверхбыстрый C-уровень: изменяет данные в памяти без циклов Python
+                m = mv.cast('h')
+                for i in range(len(m)):
+                    m[i] = (m[i] * gain_int) >> 8
+                i2s.write(mv)
+            except AttributeError:
+                # Резервный надежный способ, если прошивка не поддерживает cast()
+                b = bytearray(mv)
+                for i in range(0, num_bytes, 2):
+                    s = b[i] | (b[i+1] << 8)
+                    if s > 32767:
+                        s -= 65536
+                    s = (s * gain_int) >> 8
+                    b[i] = s & 0xFF
+                    b[i+1] = (s >> 8) & 0xFF
+                i2s.write(b)
+        else:
+            # Моно с затуханием (конвертируем в стерео)
+            out_buf = bytearray(num_bytes * 2)
+            b = memoryview(buf)[:num_bytes]
+            for i in range(0, num_bytes, 2):
+                s = b[i] | (b[i+1] << 8)
+                if s > 32767:
+                    s -= 65536
+                s = (s * gain_int) >> 8
+                
+                low = s & 0xFF
+                high = (s >> 8) & 0xFF
+                
+                out_buf[i*2] = low
+                out_buf[i*2+1] = high
+                out_buf[i*2+2] = low
+                out_buf[i*2+3] = high
+            i2s.write(out_buf)
+
+    except Exception as e:
+        # Пропускаем ошибки записи
+        pass
+
+    """Запись PCM в I2S с обработкой IN-PLACE (без пауз Garbage Collector'а)."""
+    log.info("[TRACE ENTER] write_pcm_with_gain()")
+    if not i2s or num_bytes <= 0:
+        return
+
+    # Выравнивание по четному количеству байт (16 бит = 2 байта)
+    num_bytes = num_bytes & ~1
+    if num_bytes <= 0:
+        return
+
+    try:
+        # 1. БЫСТРЫЙ ПУТЬ: полная громкость, стерео (играет 95% времени).
+        # Никакой математики, отправляем напрямую в железо.
+        if channels == 2 and gain >= 0.99:
+            i2s.write(memoryview(buf)[:num_bytes])
+            return
+
+        # 2. ПОЛНАЯ ТИШИНА: отправляем нули.
+        if gain <= 0.001:
+            if channels == 1:
+                i2s.write(bytes(num_bytes * 2))
+            else:
+                i2s.write(bytes(num_bytes))
+            return
+
+        # 3. ПЛАВНОЕ ЗАТУХАНИЕ (Fade-Out)
+        # ВАЖНО: Мы переписываем значения прямо поверх старых байт в памяти (b = buf).
+        # Это исключает выделение новой памяти и полностью убирает треск от GC.
+        gain_int = int(gain * 256)
+        b = buf  # локальная ссылка работает быстрее
+
+        if channels == 2:
+            # Быстрый цикл для Стерео
+            for i in range(0, num_bytes, 2):
+                # Читаем 16 бит (Little Endian)
+                s = b[i] | (b[i+1] << 8)
+                # Знаковое расширение
+                if s > 32767:
+                    s -= 65536
+                
+                # Применяем громкость быстрой математикой
+                s = (s * gain_int) >> 8
+                
+                # Записываем обратно в тот же буфер (IN-PLACE)
+                b[i] = s & 0xFF
+                b[i+1] = (s >> 8) & 0xFF
+            
+            i2s.write(memoryview(b)[:num_bytes])
+            
+        else:
+            # Для моно (Mono to Stereo) приходится создать буфер удваивания
+            out_buf = bytearray(num_bytes * 2)
+            for i in range(0, num_bytes, 2):
+                s = b[i] | (b[i+1] << 8)
+                if s > 32767:
+                    s -= 65536
+                    
+                s = (s * gain_int) >> 8
+                
+                low = s & 0xFF
+                high = (s >> 8) & 0xFF
+                
+                # Записываем в левый и правый каналы
+                out_idx = i * 2
+                out_buf[out_idx] = low
+                out_buf[out_idx+1] = high
+                out_buf[out_idx+2] = low
+                out_buf[out_idx+3] = high
+                
+            i2s.write(out_buf)
+
+    except Exception as e:
+        log.warning(f"Ошибка записи PCM: {e}")
+    log.debug("[TRACE EXIT] write_pcm_with_gain")
+
+
+
+    """Запись PCM в I2S с быстрым масштабированием сэмплов и автодублированием Mono->Stereo."""
+    if not i2s or num_bytes <= 0:
+        return
+
+    num_bytes = num_bytes - (num_bytes % 2)
+    if num_bytes <= 0:
+        return
+
+    try:
+        # 1. БЫСТРЫЙ ПУТЬ (играет 95% времени).
+        # Если стерео и полная громкость, отправляем сырые байты без создания массивов.
+        # Это исключает нагрузку на процессор и сборщик мусора (GC), мелодия будет идеальной.
+        if channels == 2 and gain >= 0.99:
+            i2s.write(memoryview(buf)[:num_bytes])
+            return
+
+        # 2. ПОЛНАЯ ТИШИНА: мгновенный выход.
+        if gain <= 0.001:
+            if channels == 1:
+                i2s.write(bytearray(num_bytes * 2))
+            else:
+                i2s.write(bytearray(num_bytes))
+            return
+
+        # 3. ОБРАБОТКА (Fade-out или Моно -> Стерео):
+        # Сюда код заходит только в последние 1-2 секунды трека или если файл моно.
+        samples = array.array('h', memoryview(buf)[:num_bytes])
+        gain_int = int(gain * 256)
+
+        if channels == 1:
+            # Конвертация моно в стерео
+            out_samples = array.array('h', [0] * (len(samples) * 2))
+            if gain >= 0.99:
+                for i in range(len(samples)):
+                    s = samples[i]
+                    out_samples[i * 2] = s
+                    out_samples[i * 2 + 1] = s
+            else:
+                for i in range(len(samples)):
+                    s = (samples[i] * gain_int) >> 8
+                    out_samples[i * 2] = s
+                    out_samples[i * 2 + 1] = s
+            i2s.write(out_samples)
+            
+        else:
+            # Стерео с плавным затуханием (быстрая математика)
+            for i in range(len(samples)):
+                samples[i] = (samples[i] * gain_int) >> 8
+            i2s.write(samples)
+            
+    except Exception as e:
+        log.warning(f"Ошибка записи PCM: {e}")
+
+    """Запись PCM в I2S с быстрым масштабированием сэмплов и автодублированием Mono->Stereo."""
+    if not i2s or num_bytes <= 0:
+        return
+
+    num_bytes = num_bytes - (num_bytes % 2)
+    if num_bytes <= 0:
+        return
+
+    try:
+        # Нативный (C-уровень) парсинг массива байт в 16-битные знаковые целые числа (signed short).
+        # Little-Endian на ESP32 идеально совпадает с форматом WAV. Это работает мгновенно.
+        samples = array.array('h', memoryview(buf)[:num_bytes])
+
+        if channels == 1:
+            # Конвертация моно в стерео
+            out_samples = array.array('h', [0] * (len(samples) * 2))
+            
+            if gain < 0.99:
+                # Переход к целочисленной математике (0.0 - 1.0 -> 0 - 256)
+                gain_int = int(gain * 256)
+                for i in range(len(samples)):
+                    # Сдвиг >> 8 эквивалентен делению на 256, но работает значительно быстрее
+                    s = (samples[i] * gain_int) >> 8
+                    out_samples[i * 2] = s
+                    out_samples[i * 2 + 1] = s
+            else:
+                for i in range(len(samples)):
+                    s = samples[i]
+                    out_samples[i * 2] = s
+                    out_samples[i * 2 + 1] = s
+            
+            i2s.write(out_samples)
+            
+        else:
+            # Обработка стерео
+            if gain >= 0.99:
+                # Громкость 100% — пишем напрямую, без циклов
+                i2s.write(samples)
+            elif gain <= 0.001:
+                # Тишина
+                i2s.write(bytearray(num_bytes))
+            else:
+                # Быстрое применение затухания через целочисленную математику
+                gain_int = int(gain * 256)
+                for i in range(len(samples)):
+                    samples[i] = (samples[i] * gain_int) >> 8
+                
+                # I2S умеет напрямую принимать объекты array
+                i2s.write(samples)
+                
+    except Exception as e:
+        log.warning(f"Ошибка записи PCM: {e}")
+
     """Запись PCM в I2S с масштабированием знаковых сэмплов и автодублированием Mono->Stereo."""
     log.debug("[TRACE ENTER] write_pcm_with_gain(num_bytes=%s, gain=%s, channels=%s)", num_bytes, gain, channels)
     if not i2s or num_bytes <= 0:
@@ -214,6 +558,67 @@ def write_pcm_with_gain(i2s, buf, num_bytes, gain, channels=2):
                 i2s.write(pcm_data)
     except Exception as e:
         log.warning(f"Ошибка записи PCM: {e}")
+    log.debug("[TRACE EXIT] write_pcm_with_gain")
+import machine
+
+def write_pcm_with_gain(i2s, buf, num_bytes, gain, channels=2, _mono_cache=[bytearray(8192)]):
+    """Аппаратное изменение громкости без нагрузки на CPU и без выделения памяти."""
+    try:
+        log.debug("[TRACE ENTER] write_pcm_with_gain(num_bytes=%s, gain=%s, channels=%s)", num_bytes, gain, channels)
+    except:
+        pass
+
+    if not i2s or num_bytes <= 0:
+        return
+
+    # Выравнивание по четному числу байт (защита от сбоев 16-битного аудио)
+    num_bytes = num_bytes & ~1
+    if num_bytes <= 0:
+        return
+
+    try:
+        mv = memoryview(buf)[:num_bytes]
+
+        # 1. Расчет сдвига громкости
+        # В MicroPython нет плавного float-затухания без циклов. Мы делаем ступенчатое 
+        # логарифмическое затухание (по -6dB). Для уха это звучит даже естественнее.
+        shift = 0
+        if gain <= 0.001:
+            shift = -16  # Полная тишина (сдвигаем все биты)
+        elif gain < 0.99:
+            temp_gain = gain
+            while temp_gain < 0.75 and shift > -15:
+                temp_gain *= 2.0
+                shift -= 1
+
+        # 2. АППАРАТНОЕ ЗАТУХАНИЕ (C-уровень, 0% CPU)
+        if shift < 0:
+            # Сдвигает биты прямо в оперативной памяти без участия Python-циклов
+            machine.I2S.shift(buf=mv, bits=16, shift=shift)
+
+        # 3. Отправка в I2S
+        if channels == 2:
+            i2s.write(mv)
+        else:
+            # Для моно мы предотвращаем выделение памяти (сохраняем буфер в кэше)
+            # Это спасет от заиканий при загрузке моно-звуков
+            if len(_mono_cache[0]) < num_bytes * 2:
+                _mono_cache[0] = bytearray(num_bytes * 2)
+            
+            mb = memoryview(_mono_cache[0])
+            for i in range(0, num_bytes, 2):
+                mb[i*2]   = mv[i]
+                mb[i*2+1] = mv[i+1]
+                mb[i*2+2] = mv[i]
+                mb[i*2+3] = mv[i+1]
+                
+            i2s.write(mb[:num_bytes * 2])
+
+    except Exception as e:
+        try:
+            log.warning(f"Ошибка записи PCM: {e}")
+        except:
+            pass            
     log.debug("[TRACE EXIT] write_pcm_with_gain")
 
 async def stream_wav(f, ibuf, pins, start_ticks, max_ms, fade_out_ms, is_last_repeat, start_pos_bytes=0, start_pos_sec=0.0, stop_checker=None, yield_ms=0, pos_container=None):

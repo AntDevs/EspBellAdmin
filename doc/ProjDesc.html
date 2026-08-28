@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>EspBellAdmin Project Description</title>
+<style>
+@page { size: A4; margin: 16mm 15mm 17mm; }
+body { font-family: Liberation Sans, sans-serif; color: #17212b; font-size: 10pt; line-height: 1.38; }
+h1 { font-size: 26pt; color: #0b3d4f; margin: 0 0 5pt; }
+h2 { font-size: 16pt; color: #0b6071; border-bottom: 2px solid #5eb4b7; padding-bottom: 3pt; margin: 18pt 0 7pt; }
+h3 { font-size: 11.5pt; color: #0b6071; margin: 11pt 0 3pt; }
+p { margin: 4pt 0 7pt; } ul, ol { margin-top: 3pt; padding-left: 20pt; } li { margin: 2pt 0; }
+a { color: #075e83; text-decoration: underline; }
+.cover { min-height: 245mm; padding: 34mm 9mm 0; background: #e8f4f2; border-left: 9px solid #0b6071; }
+.kicker { color: #d05a3a; text-transform: uppercase; letter-spacing: 1.3pt; font-weight: bold; font-size: 9pt; }
+.subtitle { font-size: 14pt; color: #405762; max-width: 135mm; }
+.meta { margin-top: 38mm; border-top: 1px solid #91b9b8; padding-top: 9pt; color: #405762; }
+.note { background: #fff3df; border-left: 4px solid #d05a3a; padding: 7pt 9pt; margin: 7pt 0; }
+.good { background: #e8f4f2; border-left: 4px solid #3d9b82; padding: 7pt 9pt; margin: 7pt 0; }
+table { width: 100%; border-collapse: collapse; margin: 6pt 0 10pt; page-break-inside: avoid; } th { background: #0b6071; color: white; text-align: left; padding: 5pt; } td { border: 1px solid #b9cacc; padding: 4pt 5pt; vertical-align: top; } tr:nth-child(even) td { background: #f2f7f7; }
+code, pre { font-family: Liberation Mono, monospace; font-size: 8.5pt; } pre { background: #17333b; color: #e6f4ef; padding: 9pt; line-height: 1.3; page-break-inside: avoid; }
+.cols { display: table; width: 100%; table-layout: fixed; } .col { display: table-cell; width: 50%; padding-right: 9pt; vertical-align: top; }
+.small { font-size: 8.5pt; color: #52656d; }
+</style>
+</head>
+<body>
+<section class="cover">
+<div class="kicker">System documentation | repository branch: dev</div>
+<h1>EspBellAdmin</h1>
+<p class="subtitle">Project logic, component responsibilities, runtime flow, and ESP32-S3 hardware references.</p>
+<p class="meta"><strong>Inspected scope:</strong> project files in <code>source/</code> and <code>doc/</code>, including web assets and chip-reference files.<br><strong>Document status:</strong> generated from the repository as inspected on 2026-08-28.<br><strong>Runtime:</strong> MicroPython on ESP32-S3 N16R8 with I2S audio output.</p>
+</section>
+
+<h2>1. Purpose and Runtime Summary</h2>
+<p>EspBellAdmin is an embedded bell and audio appliance. It stores a target audio file on the ESP32 filesystem, plays it through a PCM5102A-compatible I2S DAC, exposes a browser control panel, and can shut down after a configurable period without HTTP activity.</p>
+<div class="good"><strong>Configured behavior:</strong> <code>boot_mode</code> is <code>music_first</code>, so boot audio completes before networking and the web server are started. The configured web endpoint is HTTPS on port 443.</div>
+
+<h2>2. Component Graph</h2>
+<pre>MicroPython runtime
+  |
+  +--> source/main.py :: main()
+        +--> load_config() ------------------> source/config.json
+        +--> hal/boot_player.py -------------> hal/audio_utils.py
+        |                                      +--> I2S TX -> PCM5102A DAC
+        +--> setup_network() ----------------> STA Wi-Fi or AP fallback
+        |                                      +--> dns_thread() in AP mode
+        +--> hal/power_manager.py -----------> smart timeout -> GPIO4 shutdown
+        +--> hal/indicator.py ----------------> NeoPixel status -> GPIO48 default
+        +--> app/server.py :: init_server()
+               +--> app/security.py ----------> nonce + SHA-256 authentication
+               +--> app/player.py -------------> UI playback task
+               +--> app/www/* -----------------> browser UI
+
+Browser --> /api/info, /api/get-nonce, /api/verify-auth
+        --> /api/config, /upload, /api/play, /api/stop, /api/logout
+        --> /media/bell.wav --> audio_utils.py --> I2S --> DAC --> speaker</pre>
+<p class="small">The graph shows implemented imports and calls. Chip diagnostics exist but their boot invocation is commented out. <code>util/initWiFi.py</code> is a legacy standalone utility and is not imported by the active path.</p>
+
+<h2>3. Startup and Lifecycle</h2>
+<ol><li><strong>Configuration:</strong> <a href="../source/main.py">source/main.py</a> reads JSON after removing full-line <code>//</code> and <code>#</code> comments. Plain configured passwords are converted to <code>ENC:</code> values on first load.</li><li><strong>Filesystem:</strong> required runtime directories are attempted before playback.</li><li><strong>Offline audio:</strong> with <code>music_first</code>, <a href="../source/hal/boot_player.py">hal/boot_player.py</a> calls the synchronous wrapper around <code>play_audio_track(mode='boot')</code>.</li><li><strong>Network:</strong> <code>setup_network()</code> tries station mode for the configured router. Failure activates an access point and starts a DNS redirect thread.</li><li><strong>Background tasks:</strong> smart timeout and LED loop are scheduled on <code>uasyncio</code>.</li><li><strong>Web service:</strong> <a href="../source/app/server.py">app/server.py</a> registers Microdot routes and starts HTTP or HTTPS using configured certificate and key paths.</li></ol>
+
+<h2>4. Audio Pipeline</h2>
+<table><tr><th>Stage</th><th>Implementation</th><th>Behavior</th></tr><tr><td>Selection</td><td><a href="../source/hal/audio_utils.py">hal/audio_utils.py</a></td><td>Uses <code>media_dir</code> and <code>target_filename</code>; config supplies I2S ID and GPIOs.</td></tr><tr><td>WAV</td><td><code>parse_wav_header()</code>, <code>stream_wav()</code></td><td>Parses RIFF chunks, supports mono-to-stereo duplication, gain scaling, fade-out, duration limits, position tracking, and frame-aligned resume.</td></tr><tr><td>MP3</td><td><code>stream_mp3()</code> plus custom <code>mp3dec</code></td><td>Decodes chunks to PCM and writes stereo I2S. The custom decoder must exist in firmware.</td></tr><tr><td>Output</td><td><code>init_hardware_i2s()</code></td><td>Creates MicroPython I2S TX with BCK=15, WS=16, SD=17 by default, 16-bit stereo output, and a DMA buffer.</td></tr><tr><td>UI control</td><td><a href="../source/app/player.py">app/player.py</a></td><td>Starts asynchronous UI playback in mode <code>ui</code>; stop sets a flag and deinitializes I2S.</td></tr></table>
+<div class="note"><strong>Observed limitation:</strong> MP3 resume uses an approximate 16,000 file-bytes-per-second model and can seek into a compressed frame. Uploaded browser files are converted to WAV, so the normal UI upload path primarily exercises WAV playback.</div>
+
+<h2>5. Web UI and API</h2>
+<div class="cols"><div class="col"><h3>Browser application</h3><ul><li><a href="../source/app/www/index.html">index.html</a> loads <a href="../source/app/www/js/app.js">app.js</a>.</li><li><code>app.js</code> loads login, main, upload, and config views dynamically.</li><li>Selected MP3/WAV files are decoded in the browser and encoded as PCM WAV before upload.</li><li><a href="../source/app/www/css/style.css">style.css</a> supplies responsive presentation.</li></ul></div><div class="col"><h3>Routes</h3><ul><li>Public: <code>/</code>, <code>/www/*</code>, <code>/api/info</code>, <code>/api/get-nonce</code>, <code>/api/logout</code>.</li><li>Protected: <code>/api/config</code>, <code>/api/play</code>, <code>/api/stop</code>, <code>/upload</code>.</li><li>Catch-all redirects to the configured AP IP.</li><li>Intended <code>/api/logs</code> registration is after <code>return app</code> and is unreachable.</li></ul></div></div>
+
+<h2>6. Authentication and Configuration</h2>
+<p><a href="../source/app/security.py">SecurityManager</a> creates an 8-byte random nonce, stores it with a TTL, and accepts <code>SHA256(password + nonce)</code>. A nonce is deleted before hash comparison, making each token single-use. Password encryption uses AES-128-CBC when <code>ucryptolib</code> is available, with a repeating-key XOR fallback.</p>
+<p><a href="../source/config.json">config.json</a> controls boot mode, timeouts, repeat and fade behavior, resume position, Wi-Fi/AP values, file limits, HTTPS paths, media paths, and I2S pins. The server updates selected values in place with regular expressions to retain comments.</p>
+<div class="note"><strong>Security observations:</strong> the checked-in configuration contains default plaintext credentials; the browser retains the entered password for the session; authenticated configuration responses include decrypted passwords; and the XOR fallback is not cryptographically secure. Secret contents are intentionally excluded from this document.</div>
+
+<h2>7. Hardware Map and Reference Files</h2>
+<table><tr><th>Function</th><th>Software assignment</th><th>Reference / interpretation</th></tr><tr><td>I2S BCK</td><td>GPIO15</td><td>Maps to PCM5102A BCK. See <a href="ChipPin/PCM5102A_DAC_Pins.jpg">PCM5102A_DAC_Pins.jpg</a>.</td></tr><tr><td>I2S WS/LRCK</td><td>GPIO16</td><td>Maps to PCM5102A LRCK/WS.</td></tr><tr><td>I2S serial data</td><td>GPIO17</td><td>Maps to PCM5102A DIN.</td></tr><tr><td>Power / relay shutdown</td><td>GPIO4</td><td>Used by <a href="../source/hal/power_manager.py">power_manager.py</a> to drive LOW. Relay startup latch code is commented out. See <a href="ChipPin/Relay%20ModulePins.jpeg">Relay ModulePins.jpeg</a>.</td></tr><tr><td>Onboard NeoPixel</td><td>Default GPIO48 in software</td><td><a href="ChipPin/ESP32_Pins.jpg">ESP32_Pins.jpg</a> labels the onboard RGB LED as GPIO47. This is an unresolved board/software mismatch.</td></tr></table>
+<p>Additional board and DAC references: <a href="ChipPin/ESP32_Pins.avif">ESP32_Pins.avif</a>, <a href="ChipPin/Esp32_Board.jpg">Esp32_Board.jpg</a>, <a href="ChipPin/Esp32OnBoard.jpg">Esp32OnBoard.jpg</a>, <a href="ChipPin/ESp32_Chip.jpg">ESp32_Chip.jpg</a>, <a href="ChipPin/pcm5102a_exact_board_pinout_good.pdf">pcm5102a_exact_board_pinout_good.pdf</a>, <a href="ChipPin/pcm5102a_esp32s3_pinout.pdf">pcm5102a_esp32s3_pinout.pdf</a>, <a href="ChipPin/pcm5102a_expansion_board_pinout.pdf">pcm5102a_expansion_board_pinout.pdf</a>, <a href="ChipPin/pcm5102a_visual_Good.pdf">pcm5102a_visual_Good.pdf</a>, <a href="ChipPin/pcm5102a_visual_guide.pdf">pcm5102a_visual_guide.pdf</a>, <a href="ChipPin/pi.jpg">pi.jpg</a>, and <a href="ChipPin/RelayModuleDesc.avif">RelayModuleDesc.avif</a>.</p>
+
+<h2>8. Supporting Components and File Inventory</h2>
+<table><tr><th>Area</th><th>Files</th><th>Status</th></tr><tr><td>Entrypoint and logging</td><td><a href="../source/main.py">main.py</a>, <a href="../source/boot.py">boot.py</a>, <a href="../source/logger.py">logger.py</a></td><td>Active entrypoint and logging; boot.py is empty; log rotation targets <code>/boot.log</code>.</td></tr><tr><td>Application</td><td><a href="../source/app/server.py">server.py</a>, <a href="../source/app/player.py">player.py</a>, <a href="../source/app/security.py">security.py</a></td><td>Active web, playback, and auth layers.</td></tr><tr><td>HAL</td><td><a href="../source/hal/audio_utils.py">audio_utils.py</a>, <a href="../source/hal/boot_player.py">boot_player.py</a>, <a href="../source/hal/power_manager.py">power_manager.py</a>, <a href="../source/hal/indicator.py">indicator.py</a>, <a href="../source/hal/chip_monitor.py">chip_monitor.py</a></td><td>Active audio/power/indicator code; chip diagnostics exist but boot call is disabled.</td></tr><tr><td>Libraries and resources</td><td><a href="../source/lib/microdot.py">lib/microdot.py</a>, <a href="../source/lib/logging.py">lib/logging.py</a>, <code>resources/cert.crt</code>, <code>resources/cert.key</code></td><td>Vendored framework and MicroPython logging; TLS material is referenced without exposing contents.</td></tr><tr><td>Legacy utility</td><td><a href="../source/util/initWiFi.py">util/initWiFi.py</a></td><td>Standalone experimental AP/raw upload server; import-time infinite loop; not active.</td></tr></table>
+
+<h2>9. Risks and Follow-up Checks</h2>
+<ul><li>Confirm whether the board onboard LED is GPIO47 or GPIO48, then set one authoritative value.</li><li>Move or register the logs route before returning the Microdot app if logs are intended to be exposed.</li><li>Replace regex/string configuration persistence with structured JSON serialization that escapes strings and preserves boolean types.</li><li>Revisit MP3 resume semantics and ensure stop/deinitialization cannot race the active playback task.</li><li>Review TLS certificate deployment, default credentials, and whether decrypted passwords should ever be returned to the browser.</li><li>On real hardware, validate GPIO4 relay polarity and the complete power-latch circuit; startup latch implementation is disabled.</li></ul>
+<p class="small"><strong>Validation:</strong> architecture statements were cross-checked against the active source path and hardware reference inventory. This document describes the implementation as found; it does not imply hardware-only behavior has been bench-tested.</p>
+</body>
+</html>
