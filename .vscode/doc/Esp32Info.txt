@@ -1,0 +1,217 @@
+mpremote connect /dev/ttyACM0 repl
+
+ESP32-S3 N16R8 -> PCM5102A (I2S)
+
+
+
+// =====================================================================================//
+// ============================ Start Update files on  flash mem  ======================//
+// =====================================================================================//
+
+// list files on ESP 
+// ****************//
+mpremote connect /dev/ttyACM0 ls
+mpremote connect /dev/ttyACM0 ls /media
+
+// view files on ESP 
+// ****************//
+mpremote connect /dev/ttyACM0 cat boot.py
+mpremote connect /dev/ttyACM0 cat config.json
+
+// check free disk space
+mpremote exec "import os; s=os.statvfs('/'); print(f'Свободно: {s[0]*s[4]/1024/1024:.2f} MB из {s[0]*s[2]/1024/1024:.2f} MB')"
+
+// Syncronze one file from current filder to ESP32 flash disk
+// *******************************************************************************//
+mpremote connect /dev/ttyACM0 cp main.py :main.py
+
+// Syncronze one file from ESP32 flash disk to current filder
+// *******************************************************************************//
+mpremote connect /dev/ttyACM0 cp -r :boot.log boot.log
+
+// Syncronze all files from current filder and sub folders to ESP32 flash disk
+// *******************************************************************************//
+mpremote connect /dev/ttyACM0 cp -r . : && mpremote connect /dev/ttyACM0 soft-reset
+
+
+// backup all files from ESP32 flash disk to current filder 
+// *******************************************************************************//
+mpremote cp -r :. ./backup/
+
+/************** delete file from ESP32 *******************/
+// *******************************************************************************//
+mpremote connect /dev/ttyACM0 rm :webrepl_cfg.py
+
+
+// ####################################################################################//
+// ############################# END Update files on  flash mem #######################//
+// ####################################################################################//
+
+// =====================================================================================//
+// =============================        Start ESP32 Utils   ============================//
+// =====================================================================================//
+
+picocom /dev/ttyACM0 -b 115200
+
+mpremote connect /dev/ttyACM0 repl
+
+mpremote soft-reset
+
+// full ESP32 board spec
+esptool.py --port /dev/ttyACM0 flash_id
+
+// to linux cli
+rshell -p /dev/ttyACM0
+ls /pyboard
+
+mpremote cp -r :. ./backup/
+
+// ####################################################################################//
+// #############################        End Start ESP32 Utils   #######################//
+// ####################################################################################//
+
+
+// =====================================================================================//
+// ==============================   Update Start firmware    ===========================//
+// =====================================================================================//
+
+// clear internal flash mem
+// ****************//
+python3 -m esptool --chip esp32s3 --port /dev/ttyACM0 erase_flash
+
+// compile 
+// ****************//
+cd /media/topasta/Dev/git/Esp32Firmware/micropython/ports/esp32
+make BOARD=ESP32_GENERIC_S3 BOARD_VARIANT=SPIRAM_OCT USER_C_MODULES=/media/topasta/Dev/git/Esp32Firmware/Custom/mp3dec/micropython.cmake
+
+// set new firmware
+// ****************//
+cd /media/topasta/Dev/git/Esp32Firmware/micropython/ports/esp32/build-ESP32_GENERIC_S3-SPIRAM_OCT
+python3 -m esptool --chip esp32s3 --port /dev/ttyACM0 -b 460800 --before no_reset --after hard_reset write_flash "@flash_args"
+
+// set old firmware
+// ****************//
+cd /media/topasta/Dev/ESP32/firmware
+python3 -m esptool --chip esp32s3 --port /dev/ttyACM0 -b 460800 write_flash 0x0 ESP32_GENERIC_S3-SPIRAM_OCT-20240602-v1.23.0.bin
+
+// ####################################################################################//
+// ##################################  End Update firmware  ###########################//
+// ####################################################################################//
+
+
+// =====================================================================================//
+// ==============================  Start Build new firmware  ===========================//
+// =====================================================================================//
+
+
+// ####################################################################################//
+// ###############################  End Build new firmware  ###########################//
+// ####################################################################################//
+
+--------------- Подготовка системы и установка базовых зависимостей -------------------
+
+sudo apt update
+sudo apt install -y git wget flex bison gperf python3 python3-pip python3-venv cmake ninja-build ccache libffi-dev libssl-dev dfu-util libusb-1.0-0
+
+1. Создаем структуру папок и переходим в базовую директорию:
+    mkdir -p ~/Esp32Firmware/Custom/mp3dec
+    cd ~/Esp32Firmware
+2. Скачиваем ESP-IDF
+    git clone -b v5.3.1 --recursive https://github.com/espressif/esp-idf.git
+3. установку компиляторов (инструментов сборки) специально для нашего чипа ESP32-S3:
+    cd esp-idf
+    ./install.sh esp32s3
+
+----------------- Активация ESP-IDF и скачивание MicroPython ----------------------
+
+4.  Активируйте переменные среды ESP-IDF:
+    . ./export.sh
+5. Перейдите в базовую папку и клонируйте репозиторий MicroPython:
+    cd ~/Esp32Firmware
+    git clone https://github.com/micropython/micropython.git
+6. Перейдите в папку MicroPython и скачайте внешние зависимости (подмодули):
+    cd micropython
+    git submodule update --init --recursive
+
+---------------- Подготовка конфигурации для C-модуля (mp3dec) ----------------------
+7.  Соберите кросс-компилятор mpy-cross:
+    make -C mpy-cross
+8. Подготовка конфигурации для C-модуля (mp3dec)
+    cd ~/Esp32Firmware/Custom/mp3dec ??????????????????????????
+    wget https://raw.githubusercontent.com/lieff/minimp3/master/minimp3.h
+
+------------------- Сборка прошивки MicroPython -----------------------------------
+9. Скачайте специфичные для ESP32 подмодули (библиотеки):
+    cd ~/Esp32Firmware/micropython/ports/esp3
+    make submodules
+    
+
+10. Запустите компиляцию с указанием платы, типа памяти и вашего кастомного модуля:
+    cd Esp32Firmware/micropython/ports/esp32
+    make BOARD=ESP32_GENERIC_S3 BOARD_VARIANT=SPIRAM_OCT USER_C_MODULES=~/Esp32Firmware/Custom/mp3dec/micropython.cmake
+
+// =====================================================================================//
+// ==========================================  Start GitHub  ===========================//
+// =====================================================================================//
+
+
+mpremote connect /dev/ttyACM0 exec "import os; def rm_rf(d): [rm_rf(f'{d}/{e[0]}') if e[1]==0x4000 else os.remove(f'{d}/{e[0]}') for e in os.ilistdir(d)]; os.rmdir(d); rm_rf('.git')"
+
+git clone https://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@github.com/AntDevs/EspBellAdmin.git
+git clone https://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@github.com/AntDevs/Esp32Firmware.git
+https://github.com/AntDevs/Esp32Firmware.git
+
+// ####################################################################################//
+// #####################################  End Start GitHub  ###########################//
+// ####################################################################################//
+
+
+
+/************** delete file *******************/
+
+mpremote connect /dev/ttyACM0 rm :webrepl_cfg.py
+
+/*************** delete dir with contains *********************/
+
+mpremote connect /dev/ttyACM0 exec "
+import os
+def rm_rf(d):
+    try:
+        for entry in os.ilistdir(d):
+            path = d + '/' + entry[0]
+            if entry[1] == 0x4000:
+                rm_rf(path)
+            else:
+                os.remove(path)
+        os.rmdir(d)
+        print('Удалена директория:', d)
+    except Exception as e:
+        print('Ошибка:', e)
+
+rm_rf('.vscode')
+"
+
+/******************* tree **********************/
+
+mpremote connect /dev/ttyACM0 exec "
+import os
+
+def print_tree(path='/', prefix=''):
+    try:
+        entries = sorted(os.ilistdir(path), key=lambda x: x[0])
+    except Exception:
+        return
+    for i, entry in enumerate(entries):
+        name = entry[0]
+        is_dir = (entry[1] == 0x4000)
+        is_last = (i == len(entries) - 1)
+        connector = '└── ' if is_last else '├── '
+        print(prefix + connector + name + ('/' if is_dir else ''))
+        if is_dir:
+            subpath = path + '/' + name if path != '/' else '/' + name
+            new_prefix = prefix + ('    ' if is_last else '│   ')
+            print_tree(subpath, new_prefix)
+
+print('/')
+print_tree('/')
+"

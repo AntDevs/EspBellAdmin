@@ -433,7 +433,7 @@ async def play_audio_track(mode='boot', filepath=None, ibuf=8192, stop_checker=N
 
     if mode == 'boot':
         repeat_count = kwargs.get('repeat_count', config.get('repeat_count', 1))
-    else:  # mode == 'ui'
+    else:
         repeat_count = kwargs.get('repeat_count', 1)
 
     initial_seek_bytes = start_pos_bytes if resume_playback else 0
