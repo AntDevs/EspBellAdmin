@@ -7,7 +7,7 @@ import logging
 import uasyncio as asyncio
 from hal.power_manager import power_mgr
 
-from microdot import Microdot, Request, send_file
+from microdot import Microdot, Request, Response, send_file
 from app.security import SecurityManager
 from app.player import AudioPlayer
 
@@ -92,12 +92,38 @@ def init_server(config):
         log.info("[TRACE EXIT] safe_decrypt")
         return out
 
+    # ==========================================
+    # 1. ОБРАБОТКА CORS И PREFLIGHT (OPTIONS)
+    # ==========================================
+    @app.after_request
+    async def cleanup_and_cors(request, response):
+        """Добавление CORS заголовков и управление жизненным циклом соединения."""
+        try:
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
+            response.headers['Access-Control-Allow-Headers'] = 'Content-Type, X-Auth-Token, X-Auth-Nonce, X-File-Name, Authorization'
+            response.headers['Connection'] = 'close'
+            gc.collect()
+        except Exception as e:
+            log.error(f"Ошибка в cleanup_and_cors: {e}")
+        return response
+
+    @app.route('/<path:path>', methods=['OPTIONS'])
+    @app.route('/', methods=['OPTIONS'])
+    async def options_preflight(request, path=''):
+        """Ответ на preflight-запросы браузера (устраняет 405 Method Not Allowed)."""
+        res = Response('', status_code=204)
+        res.headers['Access-Control-Allow-Origin'] = '*'
+        res.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
+        res.headers['Access-Control-Allow-Headers'] = 'Content-Type, X-Auth-Token, X-Auth-Nonce, X-File-Name, Authorization'
+        return res
+
     @app.before_request
     async def log_request(request):
         log.info("[TRACE ENTER] log_request(path=%s, method=%s)", request.path, request.method)
         try:
             gc.collect()
-            # Каждое обращение к серверу (включая загрузку экрана авторизации) начинает отсчет smart_timeout заново
+            # Каждое обращение к серверу продлевает smart_timeout
             power_mgr.notify_activity()
             log.info(f"{request.method} {request.path} | Free RAM: {gc.mem_free()} B")
         except Exception as e:
@@ -140,6 +166,9 @@ def init_server(config):
         log.info("[TRACE EXIT] generic_error")
         return res
 
+    # ==========================================
+    # 2. РАЗДАЧА HTML И СТАТИКИ
+    # ==========================================
     @app.route('/')
     async def index(request):
         log.info("[TRACE ENTER] index()")
@@ -167,6 +196,9 @@ def init_server(config):
         log.info("[TRACE EXIT] serve_www")
         return res
 
+    # ==========================================
+    # 3. REST API ЭНДПОИНТЫ
+    # ==========================================
     @app.route('/api/info')
     async def api_info(request):
         log.info("[TRACE ENTER] api_info()")
@@ -175,7 +207,9 @@ def init_server(config):
                 'availableBytes': get_available_space(),
                 'maxFileBytes': max_size,
                 'allowedExtensions': config.get('allowed_extensions', ['mp3', 'wav']),
-                'isPlaying': player.is_playing
+                'isPlaying': player.is_playing,
+                'freeHeap': gc.mem_free(),
+                'device': 'ESP32-S3'
             }
             res = data, 200, {'Content-Type': 'application/json'}
         except Exception as e:
@@ -184,7 +218,29 @@ def init_server(config):
         log.info("[TRACE EXIT] api_info")
         return res
 
-    # REST API для чтения параметров конфигурации
+    # Вызов звонка (дверной звонок из UI или внешнего скрипта)
+    @app.route('/api/trigger-bell', methods=['POST'])
+    async def api_trigger_bell(request):
+        log.info("[TRACE ENTER] api_trigger_bell()")
+        try:
+            media_dir = config.get('media_dir', '/media')
+            target = config.get('target_filename', 'bell.wav')
+            filepath = f"{media_dir}/{target}"
+            
+            try:
+                os.stat(filepath)
+            except OSError:
+                log.info("[TRACE EXIT] trigger_bell -> 404 File Not Found")
+                return {'error': 'Файл bell.wav не найден во Flash-памяти!'}, 404, {'Content-Type': 'application/json'}
+
+            # Запуск воспроизведения
+            asyncio.create_task(player.play(filepath))
+            log.info("[TRACE EXIT] trigger_bell -> 200 OK")
+            return {'status': 'triggered', 'message': 'Doorbell ringing'}, 200, {'Content-Type': 'application/json'}
+        except Exception as e:
+            log.error(f"Ошибка вызова звонка: {e}")
+            return {'error': str(e)}, 500, {'Content-Type': 'application/json'}
+
     @app.route('/api/config', methods=['GET'])
     async def get_config_api(request):
         log.info("[TRACE ENTER] get_config_api()")
@@ -217,7 +273,6 @@ def init_server(config):
         log.info("[TRACE EXIT] get_config_api -> 200 OK")
         return res
 
-    # REST API для обновления и сохранения параметров в config.json с сохранением комментариев
     @app.route('/api/config', methods=['POST'])
     async def save_config_api(request):
         log.info("[TRACE ENTER] save_config_api()")
@@ -355,14 +410,14 @@ def init_server(config):
 
     @app.route('/api/verify-auth', methods=['POST'])
     async def verify_auth(request):
-        """Переключение в авторизованный режим: таймаут 600 сек + небесно-голубой цвет."""
+        """Переключение в авторизованный режим: таймаут 600 сек."""
         log.info("[TRACE ENTER] verify_auth()")
         required_password = config.get('upload_password', '')
         is_auth_ok, auth_msg = security.verify_upload_auth(request, required_password)
         if is_auth_ok:
             auth_timeout = config.get('auth_smart_timeout_sec', 600)
             power_mgr.set_timeout(auth_timeout)
-            log.info("[TRACE EXIT] verify_auth -> ok (timeout: %s s, mode: moonlight)", auth_timeout)
+            log.info("[TRACE EXIT] verify_auth -> ok (timeout: %s s)", auth_timeout)
             return {'status': 'ok'}, 200, {'Content-Type': 'application/json'}
         else:
             log.info("[TRACE EXIT] verify_auth -> error")
@@ -370,17 +425,27 @@ def init_server(config):
 
     @app.route('/api/logout', methods=['POST'])
     async def logout_api(request):
-        """Возврат в стартовый режим: таймаут 7 сек + мигалка «полиция» + сброс отсчета на 0."""
+        """Возврат в стартовый режим."""
         log.info("[TRACE ENTER] logout_api()")
         try:
             default_timeout = config.get('smart_timeout_sec', 7)
             power_mgr.set_timeout(default_timeout)
-            log.info("[TRACE EXIT] logout_api -> ok (timeout: %s s, mode: police)", default_timeout)
+            log.info("[TRACE EXIT] logout_api -> ok (timeout: %s s)", default_timeout)
             return {'status': 'ok'}, 200, {'Content-Type': 'application/json'}
         except Exception as e:
             log.error(f"Ошибка сброса таймаута при выходе: {e}")
             log.info("[TRACE EXIT] logout_api -> exception")
             return {'error': f'Ошибка выхода: {e}'}, 500, {'Content-Type': 'application/json'}
+
+    @app.route('/api/logs')
+    async def view_logs(request):
+        """Просмотр сохраненного лога работы системы boot.log."""
+        try:
+            with open('/boot.log', 'r') as f:
+                content = f.read()
+            return content, 200, {'Content-Type': 'text/plain; charset=utf-8'}
+        except OSError:
+            return 'Файл логов /boot.log не найден', 404
 
     @app.route('/upload', methods=['POST'])
     async def upload(request):
@@ -480,15 +545,6 @@ def init_server(config):
     log.info("[TRACE EXIT] init_server -> app ready")
     return app
 
-    @app.route('/api/logs')
-    async def view_logs(request):
-        """Просмотр сохраненного лога работы системы."""
-        try:
-            with open('/boot.log', 'r') as f:
-                content = f.read()
-            return content, 200, {'Content-Type': 'text/plain; charset=utf-8'}
-        except OSError:
-            return 'Файл логов /boot.log не найден', 404
 
 def start_server(app, host, port, cert_file='resources/cert.crt', key_file='resources/cert.key'):
     log.info("[TRACE ENTER] start_server(host=%s, port=%s)", host, port)
