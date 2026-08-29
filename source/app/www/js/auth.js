@@ -97,19 +97,29 @@ async function sha256Async(message) {
 }
 
 async function getAuthHeaders() {
+    console.log("[TRACE ENTER] getAuthHeaders");
     const pwd = getSavedPassword();
-    if (!pwd) return {};
+    if (!pwd) {
+        console.log("[TRACE EXIT] getAuthHeaders -> no saved password, skipping auth headers");
+        return {};
+    }
     try {
         const nonceResp = await fetch('/api/get-nonce');
+        if (!nonceResp.ok) {
+            // Явная проверка статуса ответа — раньше при ошибке сервера
+            // (напр. 500) код продолжал бы работу с nonce === undefined.
+            throw new Error(`Сервер вернул код ${nonceResp.status} при запросе nonce`);
+        }
         const nonceData = await nonceResp.json();
         const nonce = nonceData.nonce;
         const authHash = await sha256Async(pwd + nonce);
+        console.log("[TRACE EXIT] getAuthHeaders -> headers generated");
         return {
             'X-Auth-Nonce': nonce,
             'X-Auth-Hash': authHash
         };
     } catch (e) {
-        console.error("[AUTH] Error generating auth headers", e);
+        console.error("[TRACE EXIT] getAuthHeaders -> error", e);
         return {};
     }
 }

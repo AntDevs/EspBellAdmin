@@ -5,15 +5,16 @@
     <form onsubmit="handleLogin(event)">
         <div class="form-group">
             <label for="pwdInput">Пароль администратора:</label>
-            <input type="password" id="pwdInput" placeholder="Введите пароль" required autofocus>
+            <input type="password" id="pwdInput" placeholder="Введите пароль" required autofocus autocomplete="current-password">
             
             <div style="margin-top: 10px; display: flex; align-items: center; gap: 8px; font-size: 14px; color: #475569;">
-                <input type="checkbox" id="showPwdCheck" onchange="togglePassword()" style="width: auto; margin: 0; cursor: pointer;">
+                <input type="checkbox" id="showPwdCheck" onchange="togglePassword()">
                 <label for="showPwdCheck" style="display: inline; margin: 0; font-weight: normal; cursor: pointer; user-select: none;">Показать пароль</label>
             </div>
         </div>
-        <button type="submit">Войти</button>
+        <button type="submit" id="loginSubmitBtn">Войти</button>
     </form>
     
-    <div id="loginStatus"></div>
+    <!-- aria-live: статус входа теперь озвучивается скринридерами без изменения внешнего вида -->
+    <div id="loginStatus" aria-live="polite"></div>
 </div>

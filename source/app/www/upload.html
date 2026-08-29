@@ -1,7 +1,8 @@
 <div class="icon-header">🔔</div>
 <h2>Управление аудиофайлом</h2>
 
-<div class="info-badge" id="diskInfo">
+<!-- aria-live: обновление информации о памяти теперь озвучивается скринридерами -->
+<div class="info-badge" id="diskInfo" aria-live="polite">
     Загрузка сведений о памяти...
 </div>
 
@@ -20,11 +21,12 @@
     <audio id="audioPreview" controls style="width: 100%; margin-top: 6px; border-radius: 8px; outline: none;"></audio>
 </div>
 
-<button onclick="startUpload()">Конвертировать и загрузить на ESP32</button>
-<button onclick="logout()" class="btn-secondary">Выйти</button>
+<button type="button" id="uploadBtn" onclick="startUpload()">Конвертировать и загрузить на ESP32</button>
+<button type="button" onclick="logout()" class="btn-secondary">Выйти</button>
 
 <div class="progress-bar" id="progressBar">
     <div class="progress-fill" id="progressFill"></div>
 </div>
 
-<div id="status"></div>
+<!-- aria-live: статус конвертации/загрузки файла теперь озвучивается скринридерами -->
+<div id="status" aria-live="polite"></div>

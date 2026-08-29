@@ -7,11 +7,124 @@ let savedAvailableBytes = 0;
 let savedAllowedExtensions = ['mp3', 'wav'];
 let isEsp32Playing = false;
 
+// ==========================================
+// ОБЩИЕ ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ (устраняют дублирование кода)
+// ==========================================
+
+// Цветовая палитра статусных сообщений — вынесена в одно место,
+// чтобы не повторять одни и те же HEX-коды в каждой функции.
+const STATUS_COLORS = {
+    success: '#10b981',
+    error: '#ef4444',
+    neutral: '#475569'
+};
+
+/**
+ * Единая точка вывода статусных сообщений в UI.
+ * Раньше в каждой функции повторялась одна и та же конструкция
+ * `el.innerHTML = '<span style="color: ...">...</span>'`.
+ * Поведение и внешний вид сообщений остаются прежними.
+ * @param {HTMLElement|string} elementOrId - элемент или его id
+ * @param {string} message - текст (может содержать эмодзи), без HTML-инъекций извне
+ * @param {'success'|'error'|'neutral'|null} type - тип оформления, либо null для обычного текста без цвета
+ */
+function setStatusMessage(elementOrId, message, type = null) {
+    const el = typeof elementOrId === 'string' ? document.getElementById(elementOrId) : elementOrId;
+    if (!el) return;
+    if (type && STATUS_COLORS[type]) {
+        el.innerHTML = `<span style="color: ${STATUS_COLORS[type]};">${message}</span>`;
+    } else {
+        el.innerText = message;
+    }
+}
+
+/**
+ * Обёртка над fetch(), которая автоматически добавляет заголовки авторизации
+ * (X-Auth-Nonce / X-Auth-Hash), полученные через getAuthHeaders() из auth.js.
+ * Устраняет повторение блока "получить заголовки -> передать их в fetch",
+ * встречавшегося в playOnEsp32, stopOnEsp32, saveConfig и loadConfigData.
+ * @param {string} url
+ * @param {RequestInit} options - стандартные опции fetch (method, body и т.д.)
+ */
+async function fetchWithAuth(url, options = {}) {
+    const authHeaders = await getAuthHeaders();
+    return fetch(url, {
+        ...options,
+        headers: {
+            ...authHeaders,
+            ...(options.headers || {})
+        }
+    });
+}
+
+/**
+ * Выводит статусное сообщение с анимированным спиннером — используется
+ * вместо статичного эмодзи "⏳" на время ожидания ответа сервера или
+ * длительной операции в браузере (декодирование аудио и т.п.).
+ * @param {HTMLElement|string} elementOrId - элемент или его id
+ * @param {string} message - текст, который будет показан рядом со спиннером
+ */
+function setStatusLoading(elementOrId, message) {
+    const el = typeof elementOrId === 'string' ? document.getElementById(elementOrId) : elementOrId;
+    if (!el) return;
+    el.innerHTML = `<span class="spinner spinner-dark spinner-inline"></span>${message}`;
+}
+
+/**
+ * Переключает кнопку в состояние ожидания ответа: блокирует повторные клики,
+ * подставляет спиннер и (опционально) временную подпись. Исходное содержимое
+ * кнопки сохраняется в data-атрибуте и восстанавливается при isLoading=false.
+ * @param {HTMLElement|string} elementOrId - кнопка или её id
+ * @param {boolean} isLoading - включить/выключить состояние загрузки
+ * @param {string|null} loadingText - текст рядом со спиннером; если не задан, используется исходная подпись кнопки
+ */
+function setButtonLoading(elementOrId, isLoading, loadingText = null) {
+    const btn = typeof elementOrId === 'string' ? document.getElementById(elementOrId) : elementOrId;
+    if (!btn) return;
+    if (isLoading) {
+        if (btn.dataset.originalHtml === undefined) {
+            btn.dataset.originalHtml = btn.innerHTML;
+        }
+        btn.disabled = true;
+        btn.classList.add('is-loading');
+        btn.innerHTML = `<span class="spinner"></span>${loadingText || btn.dataset.originalHtml}`;
+    } else {
+        btn.disabled = false;
+        btn.classList.remove('is-loading');
+        if (btn.dataset.originalHtml !== undefined) {
+            btn.innerHTML = btn.dataset.originalHtml;
+            delete btn.dataset.originalHtml;
+        }
+    }
+}
+
+/**
+ * Заменяет содержимое контейнера на индикатор загрузки блока —
+ * используется при переключении вкладок и загрузке экранов,
+ * пока HTML-фрагмент ещё не получен с сервера.
+ * @param {HTMLElement} container
+ * @param {string} message
+ */
+function showContainerLoading(container, message = 'Загрузка...') {
+    if (!container) return;
+    container.innerHTML = `
+        <div class="loading-container">
+            <span class="spinner spinner-dark"></span>
+            <span>${message}</span>
+        </div>`;
+}
+
 function updatePlayButtonUI(isPlaying) {
     console.log("[TRACE ENTER] updatePlayButtonUI", isPlaying);
     try {
         const btn = document.getElementById('togglePlayBtn');
         if (btn) {
+            // Кнопка могла быть переведена в состояние загрузки (спиннер) перед
+            // запросом play/stop — здесь всегда возвращаем её в рабочее состояние,
+            // одновременно устанавливая финальный вид (Стоп/Проиграть).
+            btn.disabled = false;
+            btn.classList.remove('is-loading');
+            delete btn.dataset.originalHtml;
             if (isPlaying) {
                 btn.innerHTML = "⏹ Стоп";
                 btn.style.backgroundColor = "#ef4444";
@@ -47,6 +160,7 @@ async function toggleEsp32Audio() {
 async function loadMainView(defaultTab = 'upload') {
     console.log("[TRACE ENTER] loadMainView", defaultTab);
     const container = document.getElementById('app-container');
+    showContainerLoading(container, 'Загрузка интерфейса...');
     try {
         const response = await fetch('/www/main.html');
         if (!response.ok) {
@@ -90,6 +204,7 @@ async function switchTab(tabName) {
     }
 
     const fileName = tabName + '.html';
+    showContainerLoading(tabContent, 'Загрузка...');
     try {
         const response = await fetch('/www/' + fileName);
         if (!response.ok) {
@@ -122,6 +237,7 @@ async function loadView(viewName) {
         return;
     }
     const container = document.getElementById('app-container');
+    showContainerLoading(container, 'Загрузка...');
     try {
         const response = await fetch('/www/' + viewName);
         if (!response.ok) {
@@ -146,31 +262,33 @@ async function handleLogin(e) {
     e.preventDefault();
     const pwdInput = document.getElementById('pwdInput').value;
     const loginStatus = document.getElementById('loginStatus');
+    const submitBtn = document.getElementById('loginSubmitBtn');
 
-    loginStatus.innerText = "⏳ Проверка пароля...";
+    setButtonLoading(submitBtn, true, 'Проверка...');
+    setStatusLoading(loginStatus, 'Проверка пароля...');
 
     try {
         setSavedPassword(pwdInput);
-        const headers = await getAuthHeaders();
-
-        const verifyResp = await fetch('/api/verify-auth', {
-            method: 'POST',
-            headers: headers
-        });
+        const verifyResp = await fetchWithAuth('/api/verify-auth', { method: 'POST' });
 
         if (verifyResp.ok) {
             console.log("[TRACE EXIT] handleLogin -> Auth successful");
             loadMainView('upload');
+            // Кнопку намеренно не разблокируем здесь: сейчас произойдёт
+            // полная замена контейнера через loadMainView(), а вместе с ним
+            // исчезнет и сама форма входа.
         } else {
             clearSavedPassword();
+            setButtonLoading(submitBtn, false);
             const errData = await verifyResp.json();
             console.log("[TRACE EXIT] handleLogin -> Auth failed", errData);
-            loginStatus.innerHTML = `<span style="color: #ef4444;">❌ ${errData.error || 'Неверный пароль'}</span>`;
+            setStatusMessage(loginStatus, `❌ ${errData.error || 'Неверный пароль'}`, 'error');
         }
     } catch (err) {
         clearSavedPassword();
+        setButtonLoading(submitBtn, false);
         console.error("[TRACE EXIT] handleLogin -> Network error", err);
-        loginStatus.innerHTML = `<span style="color: #ef4444;">❌ Ошибка соединения</span>`;
+        setStatusMessage(loginStatus, '❌ Ошибка соединения', 'error');
     }
 }
 
@@ -181,6 +299,7 @@ async function loadSystemInfo() {
         console.log("[TRACE EXIT] loadSystemInfo (no diskInfo element)");
         return;
     }
+    setStatusLoading(diskInfo, 'Загрузка сведений о памяти...');
     try {
         const res = await fetch('/api/info');
         const data = await res.json();
@@ -210,12 +329,10 @@ async function loadSystemInfo() {
 async function loadConfigData() {
     console.log("[TRACE ENTER] loadConfigData");
     const status = document.getElementById('configStatus');
-    if (status) status.innerText = "⏳ Загрузка настроек...";
+    if (status) setStatusLoading(status, 'Загрузка настроек...');
 
     try {
-        const headers = await getAuthHeaders();
-
-        const res = await fetch('/api/config', { headers });
+        const res = await fetchWithAuth('/api/config');
 
         if (res.ok) {
             const cfg = await res.json();
@@ -230,15 +347,15 @@ async function loadConfigData() {
             document.getElementById('cfg_resume_playback').checked = !!cfg.resume_playback;
             document.getElementById('cfg_wifi_ssid').value = cfg.wifi_ssid || '';
             document.getElementById('cfg_upload_password').value = getSavedPassword();
-            if (status) status.innerText = "";
+            if (status) setStatusMessage(status, "");
             console.log("[TRACE EXIT] loadConfigData -> Success");
         } else {
             console.warn("[TRACE EXIT] loadConfigData -> Response not OK");
-            if (status) status.innerHTML = `<span style="color: #ef4444;">❌ Ошибка загрузки настроек</span>`;
+            if (status) setStatusMessage(status, '❌ Ошибка загрузки настроек', 'error');
         }
     } catch (e) {
         console.error("[TRACE EXIT] loadConfigData -> Error", e);
-        if (status) status.innerHTML = `<span style="color: #ef4444;">❌ Сбой связи с ESP32</span>`;
+        if (status) setStatusMessage(status, '❌ Сбой связи с ESP32', 'error');
     }
 }
 
@@ -246,7 +363,9 @@ async function saveConfig(e) {
     console.log("[TRACE ENTER] saveConfig");
     e.preventDefault();
     const status = document.getElementById('configStatus');
-    status.innerText = "🔑 Авторизация и запись...";
+    const submitBtn = document.getElementById('saveConfigBtn');
+    setButtonLoading(submitBtn, true, 'Сохранение...');
+    setStatusLoading(status, 'Авторизация и запись...');
 
     try {
         const newUploadPwd = document.getElementById('cfg_upload_password').value;
@@ -271,58 +390,55 @@ async function saveConfig(e) {
 
         console.log("[TRACE SAVE CONFIG PAYLOAD]", payload);
 
-        const headers = await getAuthHeaders();
-        headers['Content-Type'] = 'application/json';
-
-        const res = await fetch('/api/config', {
+        const res = await fetchWithAuth('/api/config', {
             method: 'POST',
-            headers: headers,
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         });
 
         if (res.ok) {
             setSavedPassword(newUploadPwd);
-            status.innerHTML = `<span style="color: #10b981;">✅ Настройки сохранены в config.json!</span>`;
+            setButtonLoading(submitBtn, false);
+            setStatusMessage(status, '✅ Настройки сохранены в config.json!', 'success');
             console.log("[TRACE EXIT] saveConfig -> Saved successfully");
         } else {
             const err = await res.json();
-            status.innerHTML = `<span style="color: #ef4444;">❌ ${err.error || 'Ошибка записи'}</span>`;
+            setButtonLoading(submitBtn, false);
+            setStatusMessage(status, `❌ ${err.error || 'Ошибка записи'}`, 'error');
             console.warn("[TRACE EXIT] saveConfig -> Failed", err);
         }
     } catch (err) {
         console.error("[TRACE EXIT] saveConfig -> Exception", err);
-        status.innerHTML = `<span style="color: #ef4444;">❌ Ошибка сети при сохранении</span>`;
+        setButtonLoading(submitBtn, false);
+        setStatusMessage(status, '❌ Ошибка сети при сохранении', 'error');
     }
 }
 
 async function playOnEsp32() {
     console.log("[TRACE ENTER] playOnEsp32");
     const status = document.getElementById('status');
-    status.innerText = "🔑 Подготовка авторизации...";
+    const btn = document.getElementById('togglePlayBtn');
+    setButtonLoading(btn, true, 'Запуск...');
+    setStatusLoading(status, 'Подготовка авторизации...');
 
     try {
-        const headers = await getAuthHeaders();
-
-        const resp = await fetch('/api/play', {
-            method: 'POST',
-            headers: headers
-        });
+        const resp = await fetchWithAuth('/api/play', { method: 'POST' });
 
         const result = await resp.json();
         if (resp.ok) {
-            status.innerHTML = `<span style="color: #10b981;">▶ Воспроизведение заведено на ESP32</span>`;
+            setStatusMessage(status, '▶ Воспроизведение заведено на ESP32', 'success');
             isEsp32Playing = true;
             updatePlayButtonUI(true);
             console.log("[TRACE EXIT] playOnEsp32 -> Playing started");
         } else {
-            status.innerHTML = `<span style="color: #ef4444;">❌ ${result.error || 'Ошибка воспроизведения'}</span>`;
+            setStatusMessage(status, `❌ ${result.error || 'Ошибка воспроизведения'}`, 'error');
             isEsp32Playing = false;
             updatePlayButtonUI(false);
             console.warn("[TRACE EXIT] playOnEsp32 -> Server rejected play request", result);
         }
     } catch (err) {
         console.error("[TRACE EXIT] playOnEsp32 -> Exception", err);
-        status.innerHTML = `<span style="color: #ef4444;">❌ Сбой соединения с ESP32</span>`;
+        setStatusMessage(status, '❌ Сбой соединения с ESP32', 'error');
         isEsp32Playing = false;
         updatePlayButtonUI(false);
     }
@@ -331,21 +447,18 @@ async function playOnEsp32() {
 async function stopOnEsp32() {
     console.log("[TRACE ENTER] stopOnEsp32");
     const status = document.getElementById('status');
+    const btn = document.getElementById('togglePlayBtn');
+    setButtonLoading(btn, true, 'Остановка...');
     try {
-        const headers = await getAuthHeaders();
-
-        const resp = await fetch('/api/stop', {
-            method: 'POST',
-            headers: headers
-        });
+        const resp = await fetchWithAuth('/api/stop', { method: 'POST' });
 
         if (resp.ok) {
-            status.innerHTML = `<span style="color: #475569;">⏹ Воспроизведение остановлено</span>`;
+            setStatusMessage(status, '⏹ Воспроизведение остановлено', 'neutral');
             console.log("[TRACE EXIT] stopOnEsp32 -> Playback stopped");
         }
     } catch (err) {
         console.error("[TRACE EXIT] stopOnEsp32 -> Exception", err);
-        status.innerHTML = `<span style="color: #ef4444;">❌ Сбой соединения с ESP32</span>`;
+        setStatusMessage(status, '❌ Сбой соединения с ESP32', 'error');
     } finally {
         isEsp32Playing = false;
         updatePlayButtonUI(false);

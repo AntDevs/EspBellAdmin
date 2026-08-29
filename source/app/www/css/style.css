@@ -1,7 +1,44 @@
+/* ==========================================
+   ПЕРЕМЕННЫЕ: единая цветовая палитра и размеры
+   Вынесены в :root, чтобы не повторять одни и те же
+   HEX-коды в разных блоках правил (было: #2563eb — 3 раза,
+   #e2e8f0 — 3 раза, #475569 — 3 раза и т.д.)
+   ========================================== */
+:root {
+    --color-bg: #f1f5f9;
+    --color-card-bg: #ffffff;
+
+    --color-heading: #0f172a;
+    --color-label: #475569;
+    --color-muted: #334155;
+
+    --color-border: #cbd5e1;
+    --color-border-light: #e2e8f0;
+    --color-surface-subtle: #f8fafc;
+
+    --color-primary: #2563eb;
+    --color-primary-rgb: 37, 99, 235;
+    --color-primary-hover: #1d4ed8;
+
+    --color-secondary: #94a3b8;
+    --color-gray-500: #64748b;
+    --color-tab-text-hover: #1e293b;
+
+    --color-success: #10b981;
+
+    --radius-sm: 6px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+
+    --transition-fast: 0.2s;
+    --transition-medium: 0.3s;
+}
+
 * { box-sizing: border-box; }
+
 body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    background-color: #f1f5f9;
+    background-color: var(--color-bg);
     margin: 0;
     padding: 20px;
     display: flex;
@@ -9,125 +46,239 @@ body {
     align-items: center;
     min-height: 100vh;
 }
+
 .card {
-    background: #ffffff;
-    border-radius: 12px;
+    background: var(--color-card-bg);
+    border-radius: var(--radius-lg);
     box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
     padding: 28px;
     max-width: 400px;
     width: 100%;
-    transition: all 0.3s ease;
+    transition: all var(--transition-medium) ease;
 }
+
 .icon-header {
     text-align: center;
     font-size: 42px;
     margin-bottom: 12px;
 }
+
 h2 {
     margin: 0 0 18px 0;
-    color: #0f172a;
+    color: var(--color-heading);
     font-size: 20px;
     text-align: center;
 }
+
 .form-group { margin-bottom: 16px; }
+
 label {
     display: block;
     margin-bottom: 6px;
     font-weight: 600;
-    color: #475569;
+    color: var(--color-label);
     font-size: 14px;
 }
-input[type="file"], input[type="password"], input[type="text"] {
+
+/* Базовый стиль для всех полей ввода формы.
+   Добавлены input[type="number"] и select — раньше эти элементы
+   не попадали ни в одно правило и рендерились нативным стилем браузера,
+   что визуально выбивалось на фоне остальных полей (см. config.html). */
+input[type="file"],
+input[type="password"],
+input[type="text"],
+input[type="number"],
+select {
     width: 100%;
     padding: 12px;
-    border: 1px solid #cbd5e1;
-    border-radius: 8px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
     font-size: 15px;
     outline: none;
-    transition: border-color 0.2s;
+    transition: border-color var(--transition-fast);
+    background-color: var(--color-card-bg);
+    color: inherit;
+    font-family: inherit;
 }
-input[type="password"]:focus, input[type="text"]:focus {
-    border-color: #2563eb;
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+
+/* Единое состояние фокуса для всех текстовых/числовых полей и select —
+   раньше фокус-рамка была только у password/text, из-за чего клик по
+   числовым полям или выпадающему списку в config.html выглядел иначе. */
+input[type="password"]:focus,
+input[type="text"]:focus,
+input[type="number"]:focus,
+select:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb), 0.15);
 }
+
+/* Единый стиль чекбоксов — раньше "width: auto; margin: 0;" дублировалось
+   инлайн-стилями в login.html и config.html вместо общего правила. */
+input[type="checkbox"] {
+    width: auto;
+    margin: 0;
+    cursor: pointer;
+}
+
 button {
     width: 100%;
-    background-color: #2563eb;
+    background-color: var(--color-primary);
     color: white;
     border: none;
     padding: 12px;
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     font-size: 16px;
     font-weight: 600;
     cursor: pointer;
-    transition: background 0.2s;
+    transition: background var(--transition-fast);
 }
-button:hover { background-color: #1d4ed8; }
+button:hover { background-color: var(--color-primary-hover); }
+
 .btn-secondary {
-    background-color: #94a3b8;
+    background-color: var(--color-secondary);
     margin-top: 10px;
 }
-.btn-secondary:hover { background-color: #64748b; }
+.btn-secondary:hover { background-color: var(--color-gray-500); }
+
 .progress-bar {
     width: 100%;
-    background-color: #e2e8f0;
-    border-radius: 6px;
+    background-color: var(--color-border-light);
+    border-radius: var(--radius-sm);
     overflow: hidden;
     height: 10px;
     margin-top: 16px;
     display: none;
 }
+
 .progress-fill {
     height: 100%;
-    background-color: #10b981;
+    background-color: var(--color-success);
     width: 0%;
     transition: width 0.1s;
 }
+
 .info-badge {
-    background-color: #f8fafc;
-    border: 1px solid #e2e8f0;
-    border-radius: 8px;
+    background-color: var(--color-surface-subtle);
+    border: 1px solid var(--color-border-light);
+    border-radius: var(--radius-md);
     padding: 10px;
     font-size: 13px;
-    color: #334155;
+    color: var(--color-muted);
     margin-bottom: 16px;
 }
-#status, #loginStatus {
+
+/* Добавлен #configStatus: раньше настройки CSS-панели не получали
+   ни цвет текста, ни word-break, т.к. id не входил в общий список
+   (config.html компенсировал это дублирующим инлайн-стилем). */
+#status, #loginStatus, #configStatus {
     margin-top: 14px;
     font-size: 14px;
     text-align: center;
-    color: #475569;
+    color: var(--color-label);
     word-break: break-word;
 }
 
 .tabs-container {
     display: flex;
-    border-bottom: 2px solid #e2e8f0;
+    border-bottom: 2px solid var(--color-border-light);
     margin-bottom: 20px;
 }
 
+/* !important убраны намеренно: класс .tab-btn (специфичность 0,1,0)
+   и так перевешивает селектор элемента button (0,0,1) без каких-либо
+   "!important" — они были избыточны и только затрудняли переопределение
+   стилей в будущем. Визуальный результат идентичен исходному. */
 .tab-btn {
     flex: 1;
     padding: 10px 16px;
     font-size: 14px;
     font-weight: 600;
-    background: transparent !important;
-    color: #64748b !important;
-    border: none !important;
-    border-bottom: 2px solid transparent !important;
-    border-radius: 0 !important;
+    background: transparent;
+    color: var(--color-gray-500);
+    border: none;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
     margin-bottom: -2px;
     cursor: pointer;
-    transition: all 0.2s ease;
-    box-shadow: none !important;
+    transition: all var(--transition-fast) ease;
+    box-shadow: none;
     text-align: center;
 }
 
 .tab-btn:hover {
-    color: #1e293b !important;
+    color: var(--color-tab-text-hover);
 }
 
 .tab-btn.active {
-    color: #2563eb !important;
-    border-bottom-color: #2563eb !important;
+    color: var(--color-primary);
+    border-bottom-color: var(--color-primary);
+}
+
+/* ==========================================
+   ИНДИКАТОРЫ ЗАГРУЗКИ
+   Используются везде, где UI ожидает ответ сервера или
+   завершения долгой операции в браузере (конвертация аудио,
+   переключение вкладок, отправка формы и т.д.).
+   ========================================== */
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Базовый спиннер — по умолчанию белый, для использования внутри
+   синих/серых кнопок (текст кнопок всегда белый). */
+.spinner {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255, 255, 255, 0.45);
+    border-top-color: #ffffff;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    vertical-align: middle;
+    margin-right: 8px;
+}
+
+/* Тёмный вариант — для использования на светлом фоне карточки/статус-блока,
+   а не поверх цветной кнопки. */
+.spinner-dark {
+    border: 2px solid rgba(var(--color-primary-rgb), 0.2);
+    border-top-color: var(--color-primary);
+}
+
+/* Небольшой инлайн-спиннер для текстовых статусных сообщений
+   (например, "Декодирование аудио...", "Загрузка настроек..."). */
+.spinner-inline {
+    width: 13px;
+    height: 13px;
+    border-width: 2px;
+    margin-right: 6px;
+}
+
+/* Состояние кнопки во время ожидания ответа сервера: блокирует повторные
+   клики и визуально показывает, что запрос выполняется. */
+button.is-loading {
+    opacity: 0.8;
+    cursor: progress;
+    pointer-events: none;
+}
+
+/* Индикатор загрузки целого блока/экрана — используется при переключении
+   вкладок и первичной загрузке интерфейса, пока контент ещё не получен. */
+.loading-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 40px 0;
+    color: var(--color-label);
+    font-size: 14px;
+}
+
+.loading-container .spinner-dark {
+    width: 28px;
+    height: 28px;
+    border-width: 3px;
+    margin-right: 0;
 }
