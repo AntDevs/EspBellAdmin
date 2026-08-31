@@ -4,8 +4,6 @@ import time
 import machine
 import network
 import logging
-import uasyncio as asyncio
-# from logger import setup_logging
 
 # Единственная точка настройки номера пина питания для всего проекта
 POWER_PIN = 4
@@ -36,6 +34,7 @@ log = logging.getLogger("POWER_MGR")
 class PowerManager:
     """
     Единый модуль инкапсуляции питания и Smart Timeout автоотключения.
+    Основан на независимом аппаратном таймере.
     """
 
     def __init__(self, pin_num=POWER_PIN):
@@ -44,8 +43,14 @@ class PowerManager:
         self._pin = None
         self.last_activity = time.ticks_ms()
         self.current_timeout_sec = 7
+        self._hw_timer = machine.Timer(0)
+        self.config = {}
         # self._init_gpio()
         log.info("[TRACE EXIT] PowerManager.__init__")
+
+    def set_config(self, config):
+        """Инъекция конфигурации для получения задержек и таймаутов."""
+        self.config = config
 
 # anton 2
     # def _init_gpio(self):
@@ -99,8 +104,12 @@ class PowerManager:
         log.info("[TRACE ENTER] PowerManager.shutdown()")
         try:
             log.info(f"[RELAY OFF] Отключение реле: Система обесточивается (GPIO{self.pin_num} = LOW)")
-            time.sleep_ms(100)
-            p = machine.Pin(POWER_PIN, machine.Pin.OUT, value=0)
+            self._hw_timer.deinit()
+            
+            delay_ms = self.config.get('shutdown_delay_ms', 100)
+            time.sleep_ms(delay_ms)
+            
+            p = machine.Pin(self.pin_num, machine.Pin.OUT, value=0)
             # if self._pin:
             #     self._pin.value(0)            
         except Exception as exc:
@@ -130,32 +139,31 @@ class PowerManager:
         log.info("[TRACE EXIT] PowerManager.has_active_clients -> False")
         return False
 
-    async def start_smart_timeout(self, mode=None, timeout_sec=7):
+    def _timer_callback(self, timer):
+        """Обработчик прерывания аппаратного таймера."""
+        elapsed_ms = time.ticks_diff(time.ticks_ms(), self.last_activity)
+        timeout_ms = self.current_timeout_sec * 1000
+
+        if elapsed_ms >= timeout_ms:
+            log.info(f"[SMART TIMEOUT END] Выход с обесточиванием системы ({self.current_timeout_sec} сек без активности)...")
+            self.shutdown()
+
+    def start_hardware_timeout(self, mode=None, timeout_sec=7):
         """
-        Асинхронный Smart Timeout:
+        Аппаратный Smart Timeout:
         Сбрасывает отсчет при старте и обесточивает систему при отсутствии HTTP-активности.
         Единственная точка управления автоотключением в системе.
         """
-        log.info("[TRACE ENTER] PowerManager.start_smart_timeout(mode=%s, timeout_sec=%s)", mode, timeout_sec)
+        log.info("[TRACE ENTER] PowerManager.start_hardware_timeout(mode=%s, timeout_sec=%s)", mode, timeout_sec)
         self.set_timeout(timeout_sec)
         
         try:
-            while True:
-                await asyncio.sleep(1)
-                elapsed_ms = time.ticks_diff(time.ticks_ms(), self.last_activity)
-                timeout_ms = self.current_timeout_sec * 1000
-
-                if elapsed_ms >= timeout_ms:
-                    log.info(f"[SMART TIMEOUT END] Выход с обесточиванием системы ({self.current_timeout_sec} сек без активности)...")
-                    self.shutdown()
-                    break
-
-        except asyncio.CancelledError:
-            log.info("[SMART TIMEOUT CANCEL] Таймер автоотключения отменен.")
+            period_ms = self.config.get('timer_period_ms', 1000)
+            self._hw_timer.init(period=period_ms, mode=machine.Timer.PERIODIC, callback=self._timer_callback)
         except Exception as exc:
-            self._log_traceback("Сбой в работе смарт-таймера", exc)
+            self._log_traceback("Сбой инициализации аппаратного таймера", exc)
             self.shutdown()
-        log.info("[TRACE EXIT] PowerManager.start_smart_timeout")
+        log.info("[TRACE EXIT] PowerManager.start_hardware_timeout")
 
     def _log_traceback(self, context_msg, exc):
         """Перехватчик исключений с записью трейсбэков."""

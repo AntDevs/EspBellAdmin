@@ -42,13 +42,20 @@ def set_led_mode(mode):
         log.warning(f"Сбой смены режима индикации: {e}")
     log.info("[TRACE EXIT] set_led_mode")
 
-async def start_led_loop(pin_num=48):
+async def start_led_loop(config):
     """
     Фоновый асинхронный цикл управления светодиодом.
     Динамически отрабатывает текущий режим без создания дублирующих задач.
+    Использует конфигурацию для настройки задержек и пина.
     """
     global _current_mode
+    pin_num = config.get('led_pin', 48)
     log.info("[TRACE ENTER] start_led_loop(pin_num=%s)", pin_num)
+    
+    strobe_ms = config.get('led_strobe_ms', 80)
+    strobe_short = int(strobe_ms * 0.75)
+    strobe_long = int(strobe_ms * 1.25)
+    
     try:
         pin = machine.Pin(pin_num, machine.Pin.OUT)
         np = neopixel.NeoPixel(pin, 1)
@@ -58,16 +65,16 @@ async def start_led_loop(pin_num=48):
                 # Серия вспышек красного стробоскопа
                 np[0] = (255, 0, 0)
                 np.write()
-                await asyncio.sleep_ms(80)
+                await asyncio.sleep_ms(strobe_ms)
                 np[0] = (0, 0, 0)
                 np.write()
-                await asyncio.sleep_ms(60)
+                await asyncio.sleep_ms(strobe_short)
                 np[0] = (255, 0, 0)
                 np.write()
-                await asyncio.sleep_ms(80)
+                await asyncio.sleep_ms(strobe_ms)
                 np[0] = (0, 0, 0)
                 np.write()
-                await asyncio.sleep_ms(100)
+                await asyncio.sleep_ms(strobe_long)
 
                 if _current_mode != "police":
                     continue
@@ -75,16 +82,16 @@ async def start_led_loop(pin_num=48):
                 # Серия вспышек синего стробоскопа
                 np[0] = (0, 0, 255)
                 np.write()
-                await asyncio.sleep_ms(80)
+                await asyncio.sleep_ms(strobe_ms)
                 np[0] = (0, 0, 0)
                 np.write()
-                await asyncio.sleep_ms(60)
+                await asyncio.sleep_ms(strobe_short)
                 np[0] = (0, 0, 255)
                 np.write()
-                await asyncio.sleep_ms(80)
+                await asyncio.sleep_ms(strobe_ms)
                 np[0] = (0, 0, 0)
                 np.write()
-                await asyncio.sleep_ms(200)
+                await asyncio.sleep_ms(strobe_long * 2)
 
             elif _current_mode == "moonlight":
                 # Небесно-голубой постоянный цвет (soft pale cyan-blue)

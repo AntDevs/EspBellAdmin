@@ -11,10 +11,8 @@ from microdot import Microdot, Request, Response, send_file
 from app.security import SecurityManager
 from app.player import AudioPlayer
 
-# Логгер модуля веб-сервера
 log = logging.getLogger("SERVER")
 
-# Единый экземпляр проигрывателя для работы с UI (пины вычитываются из config.json)
 player = AudioPlayer()
 
 def init_server(config):
@@ -24,7 +22,6 @@ def init_server(config):
     Request.max_content_length = max_size
     Request.max_body_size = max_size
 
-    # Привязываем объект конфигурации к плееру для автоматического чтения настроек
     player.config = config
 
     app = Microdot()
@@ -92,53 +89,87 @@ def init_server(config):
         log.info("[TRACE EXIT] safe_decrypt")
         return out
 
-    # ==========================================
-    # 1. ОБРАБОТКА CORS И PREFLIGHT (OPTIONS)
-    # ==========================================
-    @app.after_request
-    async def cleanup_and_cors(request, response):
-        """Добавление CORS заголовков и управление жизненным циклом соединения."""
+    # =========================================================================
+    # 1. ОБРАБОТКА ВХОДЯЩИХ ЗАПРОСОВ, PREFLIGHT OPTIONS И CORS
+    # =========================================================================
+    def get_allowed_origin(request):
+        """
+        Проверка заголовка Origin.
+        При allowCredentials(true) запрещено возвращать '*', поэтому при 
+        совпадении сервер должен вернуть точную строку запрашивающего домена.
+        """
+        origin = request.headers.get('Origin') or request.headers.get('origin') or ''
+        log.info("[TRACE ENTER] get_allowed_origin(origin=%s)", origin)
+
+        # Эквивалент allowedOrigins(...)
+        allowed = config.get('allowed_origins', [
+            "http://localhost:4200", "http://0.0.0.0:3000",
+            "https://bell555.local"
+        ])
+
+        if origin in allowed or '*' in allowed:
+            log.info("[TRACE EXIT] get_allowed_origin(origin=%s) -> allowed", origin)
+            return origin
+
+        log.info("[TRACE EXIT] get_allowed_origin(origin=%s) -> not allowed", origin)
+        return ''
+
+    def set_allowed_origin_headers(request, response):
+        log.info("[TRACE ENTER] set_allowed_origin_headers (uri=%s, method=%s)", request.path, request.method)
         try:
-            response.headers['Access-Control-Allow-Origin'] = '*'
+            allowed_origin = get_allowed_origin(request)
+
+            if allowed_origin:
+                response.headers['Access-Control-Allow-Origin'] = allowed_origin
+                response.headers['Access-Control-Allow-Credentials'] = 'true'
+                
+            response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'                    
+            response.headers['Access-Control-Allow-Headers'] = 'Content-Type, X-Auth-Nonce, X-Auth-Hash, X-Auth-Token, X-File-Name, Authorization'
+                        
             response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
-            response.headers['Access-Control-Allow-Headers'] = 'Content-Type, X-Auth-Token, X-Auth-Nonce, X-File-Name, Authorization'
+            # response.headers['Access-Control-Allow-Headers'] = '*'
+            response.headers['Access-Control-Expose-Headers'] = '*'
+            
             response.headers['Connection'] = 'close'
+        except Exception as e:
+            log.error(f"Ошибка в set_allowed_origin_headers: {e}")
+        log.info("[TRACE EXIT] set_allowed_origin_headers allowed_origin=%s (uri=%s, method=%s)"
+                                                , allowed_origin, request.path, request.method)
+
+    @app.before_request
+    async def process_before_request(request):
+        
+        log.info("[TRACE ENTER] process_before_request(uri=%s, method=%s)", request.path, request.method)
+        try:
+            gc.collect()
+            power_mgr.notify_activity()
+        except Exception as e:
+            log.error(f"Ошибка в notify_activity: {e}")
+
+        if request.method == 'OPTIONS':
+            res = Response('', status_code=204)
+
+            set_allowed_origin_headers(request, res)
+
+            # allowed_origin = get_allowed_origin(request)
+            # if allowed_origin:
+            #     res.headers['Access-Control-Allow-Origin'] = allowed_origin
+            # res.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
+            # # ДОБАВЛЕН X-Auth-Hash:
+            # res.headers['Access-Control-Allow-Headers'] = 'Content-Type, X-Auth-Nonce, X-Auth-Hash, X-File-Name, Authorization'
+            res.headers['Access-Control-Max-Age'] = '86400'
+            return res
+
+    @app.after_request    
+    async def cleanup_and_cors(request, response):
+        """Эквивалент Mapping("/**") для всех исходящих ответов сервера."""
+        try:
+            
+            set_allowed_origin_headers(request, response)        
+
             gc.collect()
         except Exception as e:
             log.error(f"Ошибка в cleanup_and_cors: {e}")
-        return response
-
-    @app.route('/<path:path>', methods=['OPTIONS'])
-    @app.route('/', methods=['OPTIONS'])
-    async def options_preflight(request, path=''):
-        """Ответ на preflight-запросы браузера (устраняет 405 Method Not Allowed)."""
-        res = Response('', status_code=204)
-        res.headers['Access-Control-Allow-Origin'] = '*'
-        res.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
-        res.headers['Access-Control-Allow-Headers'] = 'Content-Type, X-Auth-Token, X-Auth-Nonce, X-File-Name, Authorization'
-        return res
-
-    @app.before_request
-    async def log_request(request):
-        log.info("[TRACE ENTER] log_request(path=%s, method=%s)", request.path, request.method)
-        try:
-            gc.collect()
-            # Каждое обращение к серверу продлевает smart_timeout
-            power_mgr.notify_activity()
-            log.info(f"{request.method} {request.path} | Free RAM: {gc.mem_free()} B")
-        except Exception as e:
-            log.error(f"Ошибка в log_request: {e}")
-        log.info("[TRACE EXIT] log_request")
-
-    @app.after_request
-    async def cleanup_connection(request, response):
-        log.info("[TRACE ENTER] cleanup_connection(path=%s)", request.path)
-        try:
-            response.headers['Connection'] = 'close'
-            gc.collect()
-        except Exception as e:
-            log.error(f"Ошибка в cleanup_connection: {e}")
-        log.info("[TRACE EXIT] cleanup_connection")
         return response
 
     @app.errorhandler(413)
@@ -166,9 +197,9 @@ def init_server(config):
         log.info("[TRACE EXIT] generic_error")
         return res
 
-    # ==========================================
-    # 2. РАЗДАЧА HTML И СТАТИКИ
-    # ==========================================
+    # =========================================================================
+    # 2. РАЗДАЧА HTML И СТАТИЧЕСКИХ ФАЙЛОВ
+    # =========================================================================
     @app.route('/')
     async def index(request):
         log.info("[TRACE ENTER] index()")
@@ -196,9 +227,9 @@ def init_server(config):
         log.info("[TRACE EXIT] serve_www")
         return res
 
-    # ==========================================
+    # =========================================================================
     # 3. REST API ЭНДПОИНТЫ
-    # ==========================================
+    # =========================================================================
     @app.route('/api/info')
     async def api_info(request):
         log.info("[TRACE ENTER] api_info()")
@@ -218,7 +249,6 @@ def init_server(config):
         log.info("[TRACE EXIT] api_info")
         return res
 
-    # Вызов звонка (дверной звонок из UI или внешнего скрипта)
     @app.route('/api/trigger-bell', methods=['POST'])
     async def api_trigger_bell(request):
         log.info("[TRACE ENTER] api_trigger_bell()")
@@ -233,7 +263,6 @@ def init_server(config):
                 log.info("[TRACE EXIT] trigger_bell -> 404 File Not Found")
                 return {'error': 'Файл bell.wav не найден во Flash-памяти!'}, 404, {'Content-Type': 'application/json'}
 
-            # Запуск воспроизведения
             asyncio.create_task(player.play(filepath))
             log.info("[TRACE EXIT] trigger_bell -> 200 OK")
             return {'status': 'triggered', 'message': 'Doorbell ringing'}, 200, {'Content-Type': 'application/json'}
@@ -355,10 +384,7 @@ def init_server(config):
 
     @app.route('/api/play', methods=['POST'])
     async def play_sound(request):
-        """
-        Ознакомительное воспроизведение из UI.
-        Запускается в режиме 'ui' (1 повтор, «как есть», без лимитов и затуханий).
-        """
+        """Ознакомительное воспроизведение из UI."""
         log.info("[TRACE ENTER] play_sound()")
         required_password = config.get('upload_password', '')
         is_auth_ok, auth_msg = security.verify_upload_auth(request, required_password)
@@ -447,11 +473,151 @@ def init_server(config):
         except OSError:
             return 'Файл логов /boot.log не найден', 404
 
+    # =========================================================================
+    # 5. НАДЕЖНАЯ ПОТОКОВАЯ ЗАГРУЗКА АУДИОФАЙЛА (БЕЗ РАЗРЫВА СОКЕТА)
+    # =========================================================================
     @app.route('/upload', methods=['POST'])
     async def upload(request):
-        log.info("[TRACE ENTER] upload()")
-        log.info("Обработчик /upload вызван")
+        log.info("Обработчик POST /upload вызван")
 
+        # Определение CORS заголовков локально для Response
+        CORS_HEADERS = {'Access-Control-Allow-Origin': '*'}
+
+        # 1. Определение размера передаваемого файла
+        content_length = getattr(request, 'content_length', 0) or 0
+        if not content_length:
+            try:
+                content_length = int(request.headers.get('content-length', 0) or request.headers.get('Content-Length', 0))
+            except (ValueError, TypeError):
+                content_length = 0
+
+        log.info("Ожидаемый размер загрузки: %s байт", content_length)
+
+        # 2. Проверка авторизации
+        required_password = config.get('upload_password', '')
+        is_auth_ok, auth_msg = security.verify_upload_auth(request, required_password)
+
+        if not is_auth_ok:
+            log.warning("Ошибка авторизации загрузки: %s. Очистка входного потока...", auth_msg)
+            # Вычитываем остаток потока, чтобы сокет не сбросил TCP RST в браузер
+            try:
+                while content_length > 0:
+                    dummy = await request.stream.read(min(2048, content_length))
+                    if not dummy:
+                        break
+                    content_length -= len(dummy)
+            except Exception:
+                pass
+            return Response(f"Ошибка авторизации: {auth_msg}", status_code=401, headers=CORS_HEADERS)
+
+        # 3. Имя файла и проверка расширения
+        original_filename = request.headers.get('x-file-name', '') or request.headers.get('X-File-Name', '')
+        if not original_filename and 'filename' in request.args:
+            original_filename = request.args.get('filename', '')
+
+        allowed_exts = [ext.lower().lstrip('.') for ext in config.get('allowed_extensions', ['mp3', 'wav'])]
+        if original_filename and '.' in original_filename:
+            file_ext = original_filename.split('.')[-1].lower()
+            if file_ext not in allowed_exts:
+                log.error("Запрещенный тип файла: .%s", file_ext)
+                # Дренаж сокета перед ответом
+                try:
+                    while content_length > 0:
+                        dummy = await request.stream.read(min(2048, content_length))
+                        if not dummy:
+                            break
+                        content_length -= len(dummy)
+                except Exception:
+                    pass
+                return Response(f"Ошибка: Запрещенный тип файла (разрешены: {', '.join(allowed_exts)})!", status_code=400, headers=CORS_HEADERS)
+
+        # 4. Проверка лимитов размера
+        if content_length > max_size:
+            log.error("Заявленный размер %s B > лимита %s B", content_length, max_size)
+            return Response(f'Ошибка: Файл превышает лимит {max_size // (1024*1024)} МБ!', status_code=400, headers=CORS_HEADERS)
+
+        # 5. Очистка старых медиа ПЕРЕД проверкой свободного места, чтобы учесть освободившееся пространство
+        clear_media()
+
+        free_bytes = get_free_space()
+        if content_length > 0 and content_length > free_bytes:
+            log.error("Недостаточно места на Flash (%s B > %s B)", content_length, free_bytes)
+            return Response('Ошибка: Недостаточно места во Flash-памяти!', status_code=400, headers=CORS_HEADERS)
+
+        # 6. Открытие файла на запись
+        media_dir = config.get('media_dir', '/media')
+        target_filename = config.get('target_filename', 'bell.wav')
+        filepath = f"{media_dir}/{target_filename}"
+        log.info("Потоковая запись аудио в %s...", filepath)
+
+        saved_bytes = 0
+        chunk_size = 2048
+
+        try:
+            with open(filepath, 'wb') as f:
+                if content_length > 0:
+                    remaining = content_length
+                    while remaining > 0:
+                        to_read = min(chunk_size, remaining)
+                        chunk = await request.stream.read(to_read)
+                        if not chunk:
+                            break
+                        if isinstance(chunk, str):
+                            chunk = chunk.encode('latin-1')
+                        f.write(chunk)
+                        saved_bytes += len(chunk)
+                        remaining -= len(chunk)
+                        await asyncio.sleep_ms(1)
+                else:
+                    # Если Content-Length не был указан, читаем до закрытия потока
+                    while True:
+                        chunk = await request.stream.read(chunk_size)
+                        if not chunk:
+                            break
+                        if isinstance(chunk, str):
+                            chunk = chunk.encode('latin-1')
+                        f.write(chunk)
+                        saved_bytes += len(chunk)
+                        await asyncio.sleep_ms(1)
+
+            # Сброс позиции воспроизведения
+            config['last_play_pos_bytes'] = 0
+            config['last_play_pos_sec'] = 0
+            try:
+                with open('config.json', 'r') as fr:
+                    raw_content = fr.read()
+                raw_content = re.sub(r'"last_play_pos_bytes"\s*:\s*\d+', '"last_play_pos_bytes": 0', raw_content)
+                raw_content = re.sub(r'"last_play_pos_sec"\s*:\s*\d+(\.\d+)?', '"last_play_pos_sec": 0', raw_content)
+                with open('config.json', 'w') as fw:
+                    fw.write(raw_content)
+            except Exception:
+                pass
+
+            gc.collect()
+            log.info("Файл успешно сохранен (%s B) в %s", saved_bytes, filepath)
+            return Response(f'Файл успешно сохранен как {target_filename} ({saved_bytes} B)!', status_code=200, headers=CORS_HEADERS)
+
+        except OSError as e:
+            log.error("Сбой сокета при потоковой записи: %s", e)
+            clear_media()
+            return Response(f'Ошибка записи файла: {e}', status_code=500, headers=CORS_HEADERS)
+
+    @app.route('/upload-old', methods=['POST'])
+    async def upload_old(request):
+        log.info("[TRACE ENTER] upload()")
+
+
+        # 1. Определение размера передаваемого файла
+        content_length = getattr(request, 'content_length', 0) or 0
+        if not content_length:
+            try:
+                content_length = int(request.headers.get('content-length', 0) or request.headers.get('Content-Length', 0))
+            except (ValueError, TypeError):
+                content_length = 0
+
+        log.info("Ожидаемый размер загрузки: %s байт", content_length)
+
+        # 2. Проверка авторизации
         required_password = config.get('upload_password', '')
         is_auth_ok, auth_msg = security.verify_upload_auth(request, required_password)
 
@@ -461,6 +627,9 @@ def init_server(config):
             return f"Ошибка авторизации: {auth_msg}", 401
 
         original_filename = request.headers.get('X-File-Name', '')
+        if not original_filename and 'filename' in request.args:
+            original_filename = request.args.get('filename', '')
+
         allowed_exts = [ext.lower().lstrip('.') for ext in config.get('allowed_extensions', ['mp3', 'wav'])]
 
         if original_filename:
