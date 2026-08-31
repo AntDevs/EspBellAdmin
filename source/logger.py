@@ -3,7 +3,7 @@ import time
 import io
 import os
 import logging
-
+from app.config_manager import load_config
 
 class TimestampFormatter(logging.Formatter):
     """Кастомный форматировщик логов с поддержкой миллисекунд [YYYY-MM-DD HH:MM:SS.mmm]."""
@@ -48,6 +48,7 @@ class SafeFileHandler(logging.Handler):
         self._check_rotation()
         self._open_stream()
         self._write_boot_marker()
+        self.config = load_config()
 
     def _check_rotation(self):
         """Ротация файла с сохранением boot.log.old при превышении лимита размера."""
@@ -81,7 +82,8 @@ class SafeFileHandler(logging.Handler):
         if self._file:
             try:
                 self._file.write("\n=================== SYSTEM BOOT / POWER ON ===================\n")
-                self._file.flush()
+                if self.config.get("flush_log_file", false):
+                    self._file.flush()
             except Exception:
                 pass
 
@@ -94,7 +96,8 @@ class SafeFileHandler(logging.Handler):
             try:
                 msg = self.format(record) + "\n"
                 self._file.write(msg)
-                self._file.flush()  # Мгновенная фиксация во флеш-памяти на случай внезапного выключения
+                if self.config.get("flush_log_file", False):
+                    self._file.flush()  # Мгновенная фиксация во флеш-памяти на случай внезапного выключения                
             except Exception:
                 # В случае сбоя ввода-вывода закрываем сокет для переоткрытия на следующем вызове
                 try:

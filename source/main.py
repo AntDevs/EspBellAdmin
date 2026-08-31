@@ -11,10 +11,6 @@ def main():
     log.info("[TRACE ENTER] main()")
     gc.collect()
     
-    # Фиксируем удержание питания сразу в главном методе управления
-    # anton 2
-    # power_mgr.hold_power()
-
     # 1. Быстрая загрузка конфигурации
     # Импорт модуля конфигурации происходит здесь, чтобы минимизировать время загрузки
     from app.config_manager import load_config, setup_system_directories

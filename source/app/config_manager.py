@@ -3,11 +3,19 @@ import os
 import logging
 
 log = logging.getLogger("CONFIG")
+        
+config = None  # Глобальная переменная для хранения конфигурации
+
 
 def load_config():
     """Загрузка конфигурации с отложенной инициализацией криптографии."""
     log.info("[TRACE ENTER] load_config()")
     try:
+        global config
+        if config is not None: 
+            log.info("Файл config.json уже загружен")
+            return config  # Возврат уже загруженной конфигурации
+
         with open('config.json', 'r') as f:
             lines = f.readlines()
 
@@ -51,6 +59,7 @@ def load_config():
                 log.error(f"Не удалось обновить config.json: {ex}")
 
         log.info("[TRACE EXIT] load_config")
+        config = cfg  # Сохраняем загруженную конфигурацию в глобальную переменную
         return cfg
     except Exception as e:
         log.error(f"Ошибка чтения config.json: {e}")

@@ -1,0 +1,181 @@
+
+=================== SYSTEM BOOT / POWER ON ===================
+[2000-01-01 00:00:00.208] [INFO] [MAIN] [TRACE ENTER] main()
+[2000-01-01 00:00:00.375] [INFO] [CONFIG] [TRACE ENTER] load_config()
+[2000-01-01 00:00:00.624] [INFO] [CONFIG] Файл config.json быстро загружен.
+[2000-01-01 00:00:00.677] [INFO] [CONFIG] [TRACE EXIT] load_config
+[2000-01-01 00:00:01.623] [INFO] [BOOT_AUDIO] [TRACE ENTER] run_boot_audio()
+[2000-01-01 00:00:02.723] [INFO] [BOOT_AUDIO] === [HAL] Запуск автономной стартовой аудиосистемы по питанию ===
+[2000-01-01 00:00:02.769] [INFO] [BOOT_AUDIO] [TRACE ENTER] StandaloneBootPlayer.__init__()
+[2000-01-01 00:00:02.819] [INFO] [BOOT_AUDIO] [TRACE EXIT] StandaloneBootPlayer.__init__
+[2000-01-01 00:00:02.870] [INFO] [BOOT_AUDIO] [TRACE ENTER] StandaloneBootPlayer.play(filepath=None)
+[2000-01-01 00:00:02.004] [INFO] [AUDIO_UTILS] [TRACE ENTER] play_audio_track(mode=boot, filepath=None, ibuf=16384)
+[2000-01-01 00:00:02.083] [INFO] [AUDIO_UTILS] Открытие аудиофайла /media/bell.wav [BOOT MODE]...
+[2000-01-01 00:00:02.143] [INFO] [AUDIO_UTILS] Пины I2S: BCK=15, WS=16, SD=17, ID=0
+[2000-01-01 00:00:02.203] [INFO] [AUDIO_UTILS] Параметры сессии: повторов=2, лимит=20s, fade=2000ms, resume=True, start_pos=6502104B (36.86s)
+[2000-01-01 00:00:02.255] [INFO] [AUDIO_UTILS] Запуск итерации проигрывания 1/2...
+[2000-01-01 00:00:02.323] [INFO] [AUDIO_UTILS] [TRACE ENTER] stream_wav(start_pos_bytes=6502104, start_pos_sec=36.86, max_ms=20000, fade_ms=2000)
+[2000-01-01 00:00:02.386] [INFO] [AUDIO_UTILS] [TRACE ENTER] parse_wav_header()
+[2000-01-01 00:00:02.453] [INFO] [AUDIO_UTILS] [TRACE EXIT] parse_wav_header -> channels=1, rate=32000, bits=16, data_size=4194260, data_offset=44
+[2000-01-01 00:00:02.508] [INFO] [AUDIO_UTILS] Параметры WAV: 32000 Hz, 16 bit, channels=1, data=4194260 B
+[2000-01-01 00:00:02.583] [INFO] [AUDIO_UTILS] [TRACE ENTER] init_hardware_i2s(rate=32000, bits=16, channels=2, ibuf=16384, pins=(15,16,17,0))
+[2000-01-01 00:00:02.653] [INFO] [AUDIO_UTILS] Конфигурирование I2S (Rate=32000Hz, Bits=16, Format=1, Buffer=16384B)...
+[2000-01-01 00:00:03.728] [INFO] [AUDIO_UTILS] [TRACE EXIT] init_hardware_i2s
+[2000-01-01 00:00:22.093] [INFO] [AUDIO_UTILS] Достигнут лимит времени воспроизведения (20000 ms)
+[2000-01-01 00:00:22.153] [INFO] [AUDIO_UTILS] [TRACE EXIT] stream_wav -> True
+[2000-01-01 00:00:22.233] [INFO] [AUDIO_UTILS] Прерывание цикла повторов по лимиту времени.
+[2000-01-01 00:00:22.295] [INFO] [AUDIO_UTILS] [TRACE ENTER] save_position_to_config(pos_bytes=1237036, pos_sec=19.328)
+[2000-01-01 00:00:22.513] [INFO] [AUDIO_UTILS] Сохранена позиция воспроизведения в config.json: 1237036 B (19.33 сек)
+[2000-01-01 00:00:22.586] [INFO] [AUDIO_UTILS] [TRACE EXIT] save_position_to_config
+[2000-01-01 00:00:22.667] [INFO] [AUDIO_UTILS] [TRACE ENTER] deinit_hardware_i2s()
+[2000-01-01 00:00:23.748] [INFO] [AUDIO_UTILS] [TRACE EXIT] deinit_hardware_i2s
+[2000-01-01 00:00:23.833] [INFO] [AUDIO_UTILS] Воспроизведение аудиофайла полностью завершено, I2S освобожден.
+[2000-01-01 00:00:23.909] [INFO] [AUDIO_UTILS] [TRACE EXIT] play_audio_track -> True
+[2000-01-01 00:00:23.990] [INFO] [BOOT_AUDIO] [TRACE EXIT] StandaloneBootPlayer.play -> True
+[2000-01-01 00:00:23.071] [INFO] [BOOT_AUDIO] [TRACE EXIT] run_boot_audio -> completed
+[2000-01-01 00:00:23.153] [INFO] [MAIN] Загрузка тяжелых сетевых и асинхронных модулей...
+[2000-01-01 00:00:24.868] [INFO] [SECURITY]  Entering __init__ SecurityManager(ttl_seconds=60)
+[2000-01-01 00:00:25.975] [INFO] [SECURITY]  Exiting __init__ SecurityManager: TTL for Nonce = 60 seconds
+[2000-01-01 00:00:25.162] [INFO] [POWER_MGR] [TRACE ENTER] PowerManager.__init__(pin_num=4)
+[2000-01-01 00:00:25.254] [INFO] [POWER_MGR] [TRACE EXIT] PowerManager.__init__
+[2000-01-01 00:00:26.437] [INFO] [AUDIO] [TRACE ENTER] AudioPlayer.__init__()
+[2000-01-01 00:00:26.496] [INFO] [AUDIO] [TRACE EXIT] AudioPlayer.__init__
+[2000-01-01 00:00:26.543] [INFO] [MAIN] Инициализация сетевых интерфейсов и веб-сервера Microdot...
+[2000-01-01 00:00:26.587] [INFO] [NETWORK] [TRACE ENTER] setup_network()
+[2000-01-01 00:00:26.628] [INFO] [NETWORK] Установлено сетевое имя устройства (mDNS): bell555
+[2000-01-01 00:00:27.679] [INFO] [SECURITY]  Entering decrypt_str
+[2000-01-01 00:00:28.719] [INFO] [SECURITY]  Entering _get_aes_key_and_iv
+[2000-01-01 00:00:28.770] [INFO] [SECURITY]  Exiting _get_aes_key_and_iv
+[2000-01-01 00:00:28.821] [INFO] [SECURITY]  Exiting decrypt_str
+[2000-01-01 00:00:28.026] [INFO] [NETWORK] Подключение к роутеру 'MyHome_555'...
+[2000-01-01 00:00:30.584] [INFO] [NETWORK] Подключено к роутеру! Выделенный IP: 192.168.0.190
+[2000-01-01 00:00:30.633] [INFO] [NETWORK] [TRACE EXIT] setup_network -> STA, 192.168.0.190
+[2000-01-01 00:00:30.684] [INFO] [POWER_MGR] [TRACE ENTER] PowerManager.start_hardware_timeout(mode=STA, timeout_sec=15)
+[2000-01-01 00:00:31.734] [INFO] [POWER_MGR] [TRACE ENTER] PowerManager.set_timeout(timeout_sec=15)
+[2000-01-01 00:00:31.795] [INFO] [POWER_MGR] [TRACE ENTER] PowerManager.notify_activity()
+[2000-01-01 00:00:31.846] [INFO] [POWER_MGR] [TRACE EXIT] PowerManager.notify_activity
+[2000-01-01 00:00:31.907] [INFO] [INDICATOR] [TRACE ENTER] set_led_mode(mode=police)
+[2000-01-01 00:00:31.963] [INFO] [INDICATOR] [INDICATOR] Режим индикации успешно переключен на: 'police'
+[2000-01-01 00:00:31.028] [INFO] [INDICATOR] [TRACE EXIT] set_led_mode
+[2000-01-01 00:00:31.089] [INFO] [POWER_MGR] [POWER_MGR] Новый таймаут: 15 сек.
+[2000-01-01 00:00:31.150] [INFO] [POWER_MGR] [TRACE EXIT] PowerManager.set_timeout
+[2000-01-01 00:00:31.211] [INFO] [POWER_MGR] [TRACE EXIT] PowerManager.start_hardware_timeout
+[2000-01-01 00:00:31.313] [INFO] [SERVER] [TRACE ENTER] init_server(config_keys=['repeat_count', 'i2s_ws_pin', 'server_host', 'i2s_bck_pin', 'smart_timeout_sec', 'max_file_size', 'hostname', 'ap_ssid', 'last_play_pos_bytes', 'wifi_ssid', 'boot_mode', 'allowed_origins', 'i2s_id', 'server_port', 'fade_out_ms', 'i2s_sd_pin', 'html_index_path', 'last_play_pos_sec', 'media_dir', 'wifi_password', 'key_path', 'ap_ip', 'allowed_extensions', 'upload_password', 'resume_playback', 'encrypted_fields', 'cert_path', 'target_filename', 'ap_password', 'max_play_duration_sec'])
+[2000-01-01 00:00:31.395] [INFO] [SECURITY]  Entering __init__ SecurityManager(ttl_seconds=60)
+[2000-01-01 00:00:31.466] [INFO] [SECURITY]  Exiting __init__ SecurityManager: TTL for Nonce = 60 seconds
+[2000-01-01 00:00:31.549] [INFO] [SERVER] [TRACE EXIT] init_server -> app ready
+[2000-01-01 00:00:31.628] [INFO] [MAIN] Запуск Microdot веб-сервера на 0.0.0.0:443...
+[2000-01-01 00:00:31.699] [INFO] [MAIN] Доступ к панели управления по IP: https://192.168.0.190
+[2000-01-01 00:00:32.793] [INFO] [MAIN] Доступ к панели управления по имени: https://bell555 или https://bell555.local
+[2000-01-01 00:00:32.871] [INFO] [SERVER] [TRACE ENTER] start_server(host=0.0.0.0, port=443)
+[2000-01-01 00:00:32.992] [INFO] [SERVER] Запуск Microdot HTTPS на 0.0.0.0:443...
+[2000-01-01 00:00:32.083] [INFO] [INDICATOR] [TRACE ENTER] start_led_loop(pin_num=48)
+[2000-01-01 00:00:46.223] [INFO] [POWER_MGR] [SMART TIMEOUT END] Выход с обесточиванием системы (15 сек без активности)...
+[2000-01-01 00:00:46.304] [INFO] [POWER_MGR] [TRACE ENTER] PowerManager.shutdown()
+[2000-01-01 00:00:46.403] [INFO] [POWER_MGR] [RELAY OFF] Отключение реле: Система обесточивается (GPIO4 = LOW)
+
+=================== SYSTEM BOOT / POWER ON ===================
+[2000-01-01 00:00:00.624] [INFO] [MAIN] [TRACE ENTER] main()
+[2000-01-01 00:00:01.947] [INFO] [CONFIG] [TRACE ENTER] load_config()
+[2000-01-01 00:00:01.122] [INFO] [CONFIG] Файл config.json быстро загружен.
+[2000-01-01 00:00:01.176] [INFO] [CONFIG] [TRACE EXIT] load_config
+[2000-01-01 00:00:02.429] [INFO] [BOOT_AUDIO] [TRACE ENTER] run_boot_audio()
+[2000-01-01 00:00:02.553] [INFO] [BOOT_AUDIO] === [HAL] Запуск автономной стартовой аудиосистемы по питанию ===
+[2000-01-01 00:00:02.598] [INFO] [BOOT_AUDIO] [TRACE ENTER] StandaloneBootPlayer.__init__()
+[2000-01-01 00:00:02.649] [INFO] [BOOT_AUDIO] [TRACE EXIT] StandaloneBootPlayer.__init__
+[2000-01-01 00:00:02.699] [INFO] [BOOT_AUDIO] [TRACE ENTER] StandaloneBootPlayer.play(filepath=None)
+[2000-01-01 00:00:03.873] [INFO] [AUDIO_UTILS] [TRACE ENTER] play_audio_track(mode=boot, filepath=None, ibuf=16384)
+[2000-01-01 00:00:03.962] [INFO] [AUDIO_UTILS] Открытие аудиофайла /media/bell.wav [BOOT MODE]...
+[2000-01-01 00:00:03.022] [INFO] [AUDIO_UTILS] Пины I2S: BCK=15, WS=16, SD=17, ID=0
+[2000-01-01 00:00:03.083] [INFO] [AUDIO_UTILS] Параметры сессии: повторов=2, лимит=20s, fade=2000ms, resume=True, start_pos=1237036B (19.33s)
+[2000-01-01 00:00:03.134] [INFO] [AUDIO_UTILS] Запуск итерации проигрывания 1/2...
+[2000-01-01 00:00:03.213] [INFO] [AUDIO_UTILS] [TRACE ENTER] stream_wav(start_pos_bytes=1237036, start_pos_sec=19.33, max_ms=20000, fade_ms=2000)
+[2000-01-01 00:00:03.275] [INFO] [AUDIO_UTILS] [TRACE ENTER] parse_wav_header()
+[2000-01-01 00:00:03.343] [INFO] [AUDIO_UTILS] [TRACE EXIT] parse_wav_header -> channels=1, rate=32000, bits=16, data_size=4194260, data_offset=44
+[2000-01-01 00:00:03.407] [INFO] [AUDIO_UTILS] Параметры WAV: 32000 Hz, 16 bit, channels=1, data=4194260 B
+[2000-01-01 00:00:04.493] [INFO] [AUDIO_UTILS] [TRACE ENTER] init_hardware_i2s(rate=32000, bits=16, channels=2, ibuf=16384, pins=(15,16,17,0))
+[2000-01-01 00:00:04.563] [INFO] [AUDIO_UTILS] Конфигурирование I2S (Rate=32000Hz, Bits=16, Format=1, Buffer=16384B)...
+[2000-01-01 00:00:04.637] [INFO] [AUDIO_UTILS] [TRACE EXIT] init_hardware_i2s
+[2000-01-01 00:00:04.701] [INFO] [AUDIO_UTILS] Возобновление WAV с позиции 1237036 B / 19.33 сек
+[2000-01-01 00:00:23.003] [INFO] [AUDIO_UTILS] Достигнут лимит времени воспроизведения (20000 ms)
+[2000-01-01 00:00:23.063] [INFO] [AUDIO_UTILS] [TRACE EXIT] stream_wav -> True
+[2000-01-01 00:00:23.143] [INFO] [AUDIO_UTILS] Прерывание цикла повторов по лимиту времени.
+[2000-01-01 00:00:23.214] [INFO] [AUDIO_UTILS] [TRACE ENTER] save_position_to_config(pos_bytes=2408492, pos_sec=37.632)
+[2000-01-01 00:00:23.413] [INFO] [AUDIO_UTILS] Сохранена позиция воспроизведения в config.json: 2408492 B (37.63 сек)
+[2000-01-01 00:00:23.496] [INFO] [AUDIO_UTILS] [TRACE EXIT] save_position_to_config
+[2000-01-01 00:00:23.567] [INFO] [AUDIO_UTILS] [TRACE ENTER] deinit_hardware_i2s()
+[2000-01-01 00:00:23.648] [INFO] [AUDIO_UTILS] [TRACE EXIT] deinit_hardware_i2s
+[2000-01-01 00:00:24.733] [INFO] [AUDIO_UTILS] Воспроизведение аудиофайла полностью завершено, I2S освобожден.
+[2000-01-01 00:00:24.809] [INFO] [AUDIO_UTILS] [TRACE EXIT] play_audio_track -> True
+[2000-01-01 00:00:24.890] [INFO] [BOOT_AUDIO] [TRACE EXIT] StandaloneBootPlayer.play -> True
+[2000-01-01 00:00:24.970] [INFO] [BOOT_AUDIO] [TRACE EXIT] run_boot_audio -> completed
+[2000-01-01 00:00:24.063] [INFO] [MAIN] Загрузка тяжелых сетевых и асинхронных модулей...
+[2000-01-01 00:00:24.512] [INFO] [SECURITY]  Entering __init__ SecurityManager(ttl_seconds=60)
+[2000-01-01 00:00:24.603] [INFO] [SECURITY]  Exiting __init__ SecurityManager: TTL for Nonce = 60 seconds
+[2000-01-01 00:00:25.853] [INFO] [POWER_MGR] [TRACE ENTER] PowerManager.__init__(pin_num=4)
+[2000-01-01 00:00:25.944] [INFO] [POWER_MGR] [TRACE EXIT] PowerManager.__init__
+[2000-01-01 00:00:26.435] [INFO] [AUDIO] [TRACE ENTER] AudioPlayer.__init__()
+[2000-01-01 00:00:26.485] [INFO] [AUDIO] [TRACE EXIT] AudioPlayer.__init__
+[2000-01-01 00:00:26.543] [INFO] [MAIN] Инициализация сетевых интерфейсов и веб-сервера Microdot...
+[2000-01-01 00:00:26.587] [INFO] [NETWORK] [TRACE ENTER] setup_network()
+[2000-01-01 00:00:26.628] [INFO] [NETWORK] Установлено сетевое имя устройства (mDNS): bell555
+[2000-01-01 00:00:27.678] [INFO] [SECURITY]  Entering decrypt_str
+[2000-01-01 00:00:28.729] [INFO] [SECURITY]  Entering _get_aes_key_and_iv
+[2000-01-01 00:00:28.780] [INFO] [SECURITY]  Exiting _get_aes_key_and_iv
+[2000-01-01 00:00:28.831] [INFO] [SECURITY]  Exiting decrypt_str
+[2000-01-01 00:00:28.036] [INFO] [NETWORK] Подключение к роутеру 'MyHome_555'...
+[2000-01-01 00:00:30.484] [INFO] [NETWORK] Подключено к роутеру! Выделенный IP: 192.168.0.190
+[2000-01-01 00:00:30.533] [INFO] [NETWORK] [TRACE EXIT] setup_network -> STA, 192.168.0.190
+[2000-01-01 00:00:30.584] [INFO] [POWER_MGR] [TRACE ENTER] PowerManager.start_hardware_timeout(mode=STA, timeout_sec=15)
+[2000-01-01 00:00:30.634] [INFO] [POWER_MGR] [TRACE ENTER] PowerManager.set_timeout(timeout_sec=15)
+[2000-01-01 00:00:30.685] [INFO] [POWER_MGR] [TRACE ENTER] PowerManager.notify_activity()
+[2000-01-01 00:00:31.746] [INFO] [POWER_MGR] [TRACE EXIT] PowerManager.notify_activity
+[2000-01-01 00:00:31.807] [INFO] [INDICATOR] [TRACE ENTER] set_led_mode(mode=police)
+[2000-01-01 00:00:31.873] [INFO] [INDICATOR] [INDICATOR] Режим индикации успешно переключен на: 'police'
+[2000-01-01 00:00:31.938] [INFO] [INDICATOR] [TRACE EXIT] set_led_mode
+[2000-01-01 00:00:31.999] [INFO] [POWER_MGR] [POWER_MGR] Новый таймаут: 15 сек.
+[2000-01-01 00:00:31.060] [INFO] [POWER_MGR] [TRACE EXIT] PowerManager.set_timeout
+[2000-01-01 00:00:31.121] [INFO] [POWER_MGR] [TRACE EXIT] PowerManager.start_hardware_timeout
+[2000-01-01 00:00:31.223] [INFO] [SERVER] [TRACE ENTER] init_server(config_keys=['repeat_count', 'i2s_ws_pin', 'server_host', 'i2s_bck_pin', 'smart_timeout_sec', 'max_file_size', 'hostname', 'ap_ssid', 'last_play_pos_bytes', 'wifi_ssid', 'boot_mode', 'allowed_origins', 'i2s_id', 'server_port', 'fade_out_ms', 'i2s_sd_pin', 'html_index_path', 'last_play_pos_sec', 'media_dir', 'wifi_password', 'key_path', 'ap_ip', 'allowed_extensions', 'upload_password', 'resume_playback', 'encrypted_fields', 'cert_path', 'target_filename', 'ap_password', 'max_play_duration_sec'])
+[2000-01-01 00:00:31.295] [INFO] [SECURITY]  Entering __init__ SecurityManager(ttl_seconds=60)
+[2000-01-01 00:00:31.376] [INFO] [SECURITY]  Exiting __init__ SecurityManager: TTL for Nonce = 60 seconds
+[2000-01-01 00:00:31.459] [INFO] [SERVER] [TRACE EXIT] init_server -> app ready
+[2000-01-01 00:00:31.538] [INFO] [MAIN] Запуск Microdot веб-сервера на 0.0.0.0:443...
+[2000-01-01 00:00:31.619] [INFO] [MAIN] Доступ к панели управления по IP: https://192.168.0.190
+[2000-01-01 00:00:32.713] [INFO] [MAIN] Доступ к панели управления по имени: https://bell555 или https://bell555.local
+[2000-01-01 00:00:32.790] [INFO] [SERVER] [TRACE ENTER] start_server(host=0.0.0.0, port=443)
+[2000-01-01 00:00:32.925] [INFO] [SERVER] Запуск Microdot HTTPS на 0.0.0.0:443...
+[2000-01-01 00:00:32.013] [INFO] [INDICATOR] [TRACE ENTER] start_led_loop(pin_num=48)
+[2000-01-01 00:00:46.133] [INFO] [POWER_MGR] [SMART TIMEOUT END] Выход с обесточиванием системы (15 сек без активности)...
+[2000-01-01 00:00:46.214] [INFO] [POWER_MGR] [TRACE ENTER] PowerManager.shutdown()
+[2000-01-01 00:00:46.313] [INFO] [POWER_MGR] [RELAY OFF] Отключение реле: Система обесточивается (GPIO4 = LOW)
+
+=================== SYSTEM BOOT / POWER ON ===================
+[2000-01-01 00:00:00.184] [INFO] [MAIN] [TRACE ENTER] main()
+[2000-01-01 00:00:00.366] [INFO] [CONFIG] [TRACE ENTER] load_config()
+[2000-01-01 00:00:00.526] [INFO] [CONFIG] Файл config.json быстро загружен.
+[2000-01-01 00:00:00.576] [INFO] [CONFIG] [TRACE EXIT] load_config
+[2000-01-01 00:00:01.264] [INFO] [BOOT_AUDIO] [TRACE ENTER] run_boot_audio()
+[2000-01-01 00:00:01.343] [INFO] [BOOT_AUDIO] === [HAL] Запуск автономной стартовой аудиосистемы по питанию ===
+[2000-01-01 00:00:01.388] [INFO] [BOOT_AUDIO] [TRACE ENTER] StandaloneBootPlayer.__init__()
+[2000-01-01 00:00:01.429] [INFO] [BOOT_AUDIO] [TRACE EXIT] StandaloneBootPlayer.__init__
+[2000-01-01 00:00:01.479] [INFO] [BOOT_AUDIO] [TRACE ENTER] StandaloneBootPlayer.play(filepath=None)
+[2000-01-01 00:00:01.578] [INFO] [AUDIO_UTILS] [TRACE ENTER] play_audio_track(mode=boot, filepath=None, ibuf=16384)
+[2000-01-01 00:00:01.653] [INFO] [AUDIO_UTILS] Открытие аудиофайла /media/bell.wav [BOOT MODE]...
+[2000-01-01 00:00:02.712] [INFO] [AUDIO_UTILS] Пины I2S: BCK=15, WS=16, SD=17, ID=0
+[2000-01-01 00:00:02.773] [INFO] [AUDIO_UTILS] Параметры сессии: повторов=2, лимит=20s, fade=2000ms, resume=True, start_pos=2408492B (37.63s)
+[2000-01-01 00:00:02.834] [INFO] [AUDIO_UTILS] Запуск итерации проигрывания 1/2...
+[2000-01-01 00:00:02.903] [INFO] [AUDIO_UTILS] [TRACE ENTER] stream_wav(start_pos_bytes=2408492, start_pos_sec=37.63, max_ms=20000, fade_ms=2000)
+[2000-01-01 00:00:02.955] [INFO] [AUDIO_UTILS] [TRACE ENTER] parse_wav_header()
+[2000-01-01 00:00:02.013] [INFO] [AUDIO_UTILS] [TRACE EXIT] parse_wav_header -> channels=1, rate=32000, bits=16, data_size=4194260, data_offset=44
+[2000-01-01 00:00:02.087] [INFO] [AUDIO_UTILS] Параметры WAV: 32000 Hz, 16 bit, channels=1, data=4194260 B
+[2000-01-01 00:00:02.163] [INFO] [AUDIO_UTILS] [TRACE ENTER] init_hardware_i2s(rate=32000, bits=16, channels=2, ibuf=16384, pins=(15,16,17,0))
+[2000-01-01 00:00:02.233] [INFO] [AUDIO_UTILS] Конфигурирование I2S (Rate=32000Hz, Bits=16, Format=1, Buffer=16384B)...
+[2000-01-01 00:00:02.307] [INFO] [AUDIO_UTILS] [TRACE EXIT] init_hardware_i2s
+[2000-01-01 00:00:02.361] [INFO] [AUDIO_UTILS] Возобновление WAV с позиции 2408492 B / 37.63 сек
+[2000-01-01 00:00:15.339] [INFO] [AUDIO_UTILS] [TRACE ENTER] save_position_to_config(pos_bytes=2408492, pos_sec=37.63)
+[2000-01-01 00:00:15.533] [INFO] [AUDIO_UTILS] Сохранена позиция воспроизведения в config.json: 2408492 B (37.63 сек)
+[2000-01-01 00:00:15.603] [INFO] [AUDIO_UTILS] [TRACE EXIT] save_position_to_config
+[2000-01-01 00:00:15.674] [INFO] [AUDIO_UTILS] [TRACE ENTER] deinit_hardware_i2s()
+[2000-01-01 00:00:16.755] [INFO] [AUDIO_UTILS] [TRACE EXIT] deinit_hardware_i2s
+[2000-01-01 00:00:16.833] [INFO] [AUDIO_UTILS] Воспроизведение аудиофайла полностью завершено, I2S освобожден.

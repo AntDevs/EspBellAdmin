@@ -85,6 +85,8 @@
   // IP-адрес ESP32 в режиме локальной точки доступа (AP)
   "ap_ip": "192.168.4.1",
 
+  "flush_log_file": false,
+
   "allowed_origins": [
       "http://localhost:3000",
       "http://192.168.4.1",
