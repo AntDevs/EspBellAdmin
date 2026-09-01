@@ -8,7 +8,7 @@ import uasyncio as asyncio
 from hal.power_manager import power_mgr
 
 
-from lib.microdot.microdot import Microdot, Request, Response, send_file
+from microdot import Microdot, Request, Response, send_file
 # from microdot import Microdot, Request, Response, send_file
 from microdot.cors import CORS 
 from app.security import SecurityManager
