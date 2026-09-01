@@ -7,7 +7,10 @@ import logging
 import uasyncio as asyncio
 from hal.power_manager import power_mgr
 
-from microdot import Microdot, Request, Response, send_file
+
+from lib.microdot.microdot import Microdot, Request, Response, send_file
+# from microdot import Microdot, Request, Response, send_file
+from microdot.cors import CORS 
 from app.security import SecurityManager
 from app.player import AudioPlayer
 
@@ -25,6 +28,14 @@ def init_server(config):
     player.config = config
 
     app = Microdot()
+
+    cors = CORS(
+        app, 
+        allowed_origins=['http://localhost:3000'],  # Replace with your frontend domain
+        allowed_methods=['GET', 'POST', 'OPTIONS'], # Explicitly include POST and OPTIONS
+        allowed_headers=['Content-Type', 'Authorization'] # Add headers your frontend sends
+    )
+
     app.max_content_length = max_size
     app.max_body_size = max_size
 
@@ -95,50 +106,80 @@ def init_server(config):
     def get_allowed_origin(request):
         """
         Проверка заголовка Origin.
-        При allowCredentials(true) запрещено возвращать '*', поэтому при 
-        совпадении сервер должен вернуть точную строку запрашивающего домена.
+        При наличии Origin сервер возвращает точную строку запрашивающего домена
+        для поддержки любых cross-domain клиентов (Android, Web, dev-серверы),
+        что также удовлетворяет требованию Access-Control-Allow-Credentials.
         """
         origin = request.headers.get('Origin') or request.headers.get('origin') or ''
         log.info("[TRACE ENTER] get_allowed_origin(origin=%s)", origin)
 
-        # Эквивалент allowedOrigins(...)
-        allowed = config.get('allowed_origins', [
-            "http://localhost:4200", "http://0.0.0.0:3000",
-            "https://bell555.local"
-        ])
+        allowed = config.get('allowed_origins', ['*'])
 
-        if origin in allowed or '*' in allowed:
-            log.info("[TRACE EXIT] get_allowed_origin(origin=%s) -> allowed", origin)
-            return origin
+        # Если в конфиге разрешены все ('*'), или origin совпадает, или origin передан клиентом
+        if '*' in allowed or not allowed or origin in allowed or origin:
+            res_origin = origin if origin else '*'
+            log.info("[TRACE EXIT] get_allowed_origin(origin=%s) -> allowed", res_origin)
+            return res_origin
 
-        log.info("[TRACE EXIT] get_allowed_origin(origin=%s) -> not allowed", origin)
-        return ''
+        log.info("[TRACE EXIT] get_allowed_origin -> *")
+        return '*'
+
 
     def set_allowed_origin_headers(request, response):
         log.info("[TRACE ENTER] set_allowed_origin_headers (uri=%s, method=%s)", request.path, request.method)
         try:
             allowed_origin = get_allowed_origin(request)
 
-            if allowed_origin:
+            if allowed_origin and allowed_origin != '*':
                 response.headers['Access-Control-Allow-Origin'] = allowed_origin
                 response.headers['Access-Control-Allow-Credentials'] = 'true'
-                
-            response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'                    
-            response.headers['Access-Control-Allow-Headers'] = 'Content-Type, X-Auth-Nonce, X-Auth-Hash, X-Auth-Token, X-File-Name, Authorization'
-                        
+            else:
+                response.headers['Access-Control-Allow-Origin'] = '*'
+
+            # ---> ДОБАВЛЯЕМ ПРОВЕРКУ PNA <---
+            if request.headers.get('Access-Control-Request-Private-Network') or request.headers.get('access-control-request-private-network'):
+                response.headers['Access-Control-Allow-Private-Network'] = 'true'
+
+            req_headers = request.headers.get('Access-Control-Request-Headers') or request.headers.get('access-control-request-headers')
+            if req_headers:
+                response.headers['Access-Control-Allow-Headers'] = req_headers
+            else:
+                response.headers['Access-Control-Allow-Headers'] = 'Content-Type, X-Auth-Nonce, X-Auth-Hash, X-Auth-Token, X-File-Name, Authorization'
+
             response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
-            # response.headers['Access-Control-Allow-Headers'] = '*'
             response.headers['Access-Control-Expose-Headers'] = '*'
-            
             response.headers['Connection'] = 'close'
         except Exception as e:
             log.error(f"Ошибка в set_allowed_origin_headers: {e}")
-        log.info("[TRACE EXIT] set_allowed_origin_headers allowed_origin=%s (uri=%s, method=%s)"
-                                                , allowed_origin, request.path, request.method)
+
+    def set_allowed_origin_headersOld(request, response):
+        log.info("[TRACE ENTER] set_allowed_origin_headers (uri=%s, method=%s)", request.path, request.method)
+        try:
+            allowed_origin = get_allowed_origin(request)
+
+            if allowed_origin and allowed_origin != '*':
+                response.headers['Access-Control-Allow-Origin'] = allowed_origin
+                response.headers['Access-Control-Allow-Credentials'] = 'true'
+            else:
+                response.headers['Access-Control-Allow-Origin'] = '*'
+
+            req_headers = request.headers.get('Access-Control-Request-Headers') or request.headers.get('access-control-request-headers')
+            if req_headers:
+                response.headers['Access-Control-Allow-Headers'] = req_headers
+            else:
+                response.headers['Access-Control-Allow-Headers'] = 'Content-Type, X-Auth-Nonce, X-Auth-Hash, X-Auth-Token, X-File-Name, Authorization'
+
+            response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
+            response.headers['Access-Control-Expose-Headers'] = '*'
+            response.headers['Access-Control-Allow-Private-Network'] = 'true'
+            response.headers['Connection'] = 'close'
+        except Exception as e:
+            log.error(f"Ошибка в set_allowed_origin_headers: {e}")
+        log.info("[TRACE EXIT] set_allowed_origin_headers allowed_origin=%s (uri=%s, method=%s)",
+                 allowed_origin, request.path, request.method)
 
     @app.before_request
     async def process_before_request(request):
-        
         log.info("[TRACE ENTER] process_before_request(uri=%s, method=%s)", request.path, request.method)
         try:
             gc.collect()
@@ -146,27 +187,18 @@ def init_server(config):
         except Exception as e:
             log.error(f"Ошибка в notify_activity: {e}")
 
-        if request.method == 'OPTIONS':
-            res = Response('', status_code=204)
-
+        
+        if request.method == 'OPTIONS':            
+            res = Response('', status_code=204)            
             set_allowed_origin_headers(request, res)
-
-            # allowed_origin = get_allowed_origin(request)
-            # if allowed_origin:
-            #     res.headers['Access-Control-Allow-Origin'] = allowed_origin
-            # res.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
-            # # ДОБАВЛЕН X-Auth-Hash:
-            # res.headers['Access-Control-Allow-Headers'] = 'Content-Type, X-Auth-Nonce, X-Auth-Hash, X-File-Name, Authorization'
-            res.headers['Access-Control-Max-Age'] = '86400'
+            # res.headers['Access-Control-Max-Age'] = '86400'
             return res
 
     @app.after_request    
     async def cleanup_and_cors(request, response):
         """Эквивалент Mapping("/**") для всех исходящих ответов сервера."""
         try:
-            
             set_allowed_origin_headers(request, response)        
-
             gc.collect()
         except Exception as e:
             log.error(f"Ошибка в cleanup_and_cors: {e}")
@@ -249,7 +281,7 @@ def init_server(config):
         log.info("[TRACE EXIT] api_info")
         return res
 
-    @app.route('/api/trigger-bell', methods=['POST'])
+    @app.route('/api/trigger-bell', methods=['POST', 'OPTIONS'])
     async def api_trigger_bell(request):
         log.info("[TRACE ENTER] api_trigger_bell()")
         try:
@@ -302,7 +334,7 @@ def init_server(config):
         log.info("[TRACE EXIT] get_config_api -> 200 OK")
         return res
 
-    @app.route('/api/config', methods=['POST'])
+    @app.route('/api/config', methods=['POST', 'OPTIONS'])
     async def save_config_api(request):
         log.info("[TRACE ENTER] save_config_api()")
         required_password = config.get('upload_password', '')
@@ -382,7 +414,7 @@ def init_server(config):
             log.info("[TRACE EXIT] save_config_api -> 500 Exception")
             return {'error': f'Ошибка сохранения: {e}'}, 500, {'Content-Type': 'application/json'}
 
-    @app.route('/api/play', methods=['POST'])
+    @app.route('/api/play', methods=['POST', 'OPTIONS'])
     async def play_sound(request):
         """Ознакомительное воспроизведение из UI."""
         log.info("[TRACE ENTER] play_sound()")
@@ -407,7 +439,7 @@ def init_server(config):
         log.info("[TRACE EXIT] play_sound -> 200 playing task started")
         return {'status': 'playing'}, 200, {'Content-Type': 'application/json'}
 
-    @app.route('/api/stop', methods=['POST'])
+    @app.route('/api/stop', methods=['POST', 'OPTIONS'])
     async def stop_sound(request):
         """Остановка воспроизведения по запросу из веб-панели."""
         log.info("[TRACE ENTER] stop_sound()")
@@ -434,10 +466,16 @@ def init_server(config):
         log.info("[TRACE EXIT] get_nonce")
         return res
 
+    @app.route('/api/verify-auth', methods=['OPTIONS'])
+    async def verify_auth(request):
+        """Переключение в авторизованный режим: таймаут 600 сек."""
+        log.info("[TRACE ENTER] verify_auth() OPTIONS")
+        return Response('', 204)
+
     @app.route('/api/verify-auth', methods=['POST'])
     async def verify_auth(request):
         """Переключение в авторизованный режим: таймаут 600 сек."""
-        log.info("[TRACE ENTER] verify_auth()")
+        log.info("[TRACE ENTER] verify_auth() POST")
         required_password = config.get('upload_password', '')
         is_auth_ok, auth_msg = security.verify_upload_auth(request, required_password)
         if is_auth_ok:
@@ -449,7 +487,8 @@ def init_server(config):
             log.info("[TRACE EXIT] verify_auth -> error")
             return {'error': auth_msg}, 401, {'Content-Type': 'application/json'}
 
-    @app.route('/api/logout', methods=['POST'])
+
+    @app.route('/api/logout', methods=['POST', 'OPTIONS'])
     async def logout_api(request):
         """Возврат в стартовый режим."""
         log.info("[TRACE ENTER] logout_api()")
@@ -476,12 +515,19 @@ def init_server(config):
     # =========================================================================
     # 5. НАДЕЖНАЯ ПОТОКОВАЯ ЗАГРУЗКА АУДИОФАЙЛА (БЕЗ РАЗРЫВА СОКЕТА)
     # =========================================================================
-    @app.route('/upload', methods=['POST'])
+    @app.route('/upload', methods=['POST', 'OPTIONS'])
     async def upload(request):
         log.info("Обработчик POST /upload вызван")
 
         # Определение CORS заголовков локально для Response
-        CORS_HEADERS = {'Access-Control-Allow-Origin': '*'}
+        allowed_origin = get_allowed_origin(request)
+        if allowed_origin and allowed_origin != '*':
+            CORS_HEADERS = {
+                'Access-Control-Allow-Origin': allowed_origin,
+                'Access-Control-Allow-Credentials': 'true'
+            }
+        else:
+            CORS_HEADERS = {'Access-Control-Allow-Origin': '*'}
 
         # 1. Определение размера передаваемого файла
         content_length = getattr(request, 'content_length', 0) or 0
@@ -602,10 +648,9 @@ def init_server(config):
             clear_media()
             return Response(f'Ошибка записи файла: {e}', status_code=500, headers=CORS_HEADERS)
 
-    @app.route('/upload-old', methods=['POST'])
+    @app.route('/upload-old', methods=['POST', 'OPTIONS'])
     async def upload_old(request):
         log.info("[TRACE ENTER] upload()")
-
 
         # 1. Определение размера передаваемого файла
         content_length = getattr(request, 'content_length', 0) or 0
