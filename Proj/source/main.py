@@ -1,6 +1,6 @@
 import gc
 import logging
-from logger import setup_logging
+from util.logger import setup_logging
 
 # Инициализация только самого необходимого минимума для старта
 setup_logging(logging.INFO)
@@ -13,7 +13,7 @@ def main():
     
     # 1. Быстрая загрузка конфигурации
     # Импорт модуля конфигурации происходит здесь, чтобы минимизировать время загрузки
-    from app.config_manager import load_config, setup_system_directories
+    from util.config_manager import load_config, setup_system_directories
     config = load_config()
     setup_system_directories()
 

@@ -3,7 +3,7 @@ import time
 import io
 import os
 import logging
-from app.config_manager import load_config
+from util.config_manager import load_config
 
 class TimestampFormatter(logging.Formatter):
     """Кастомный форматировщик логов с поддержкой миллисекунд [YYYY-MM-DD HH:MM:SS.mmm]."""
