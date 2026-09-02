@@ -28,7 +28,7 @@ mpremote connect /dev/ttyACM0 cp main.py :main.py
 // Syncronze one file from ESP32 flash disk to current filder
 // *******************************************************************************//
 mpremote connect /dev/ttyACM0 cp -r :boot.log boot.log
-
+mpremote connect /dev/ttyACM0 cp -r :config.json config.json
 // Syncronze all files from current filder and sub folders to ESP32 flash disk
 // *******************************************************************************//
 mpremote connect /dev/ttyACM0 cp -r . : && mpremote connect /dev/ttyACM0 soft-reset

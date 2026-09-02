@@ -254,6 +254,27 @@ def init_server(config):
         log.info("[TRACE EXIT] api_info")
         return res
 
+    @app.route('/api/wifi-scan')
+    async def api_wifi_scan(request):
+        log.info("[TRACE ENTER] api_wifi_scan()")
+        try:
+            required_password = config.get('upload_password', '')
+            is_auth_ok, auth_msg = security.verify_upload_auth(request, required_password)
+            if not is_auth_ok:
+                return {'error': auth_msg}, 401, {'Content-Type': 'application/json'}
+            
+            from app.network_manager import get_network_list
+            nets = get_network_list()
+            res = {'networks': nets}, 200, {'Content-Type': 'application/json'}
+        except Exception as e:
+            import sys, io
+            buf = io.StringIO()
+            sys.print_exception(e, buf)
+            log.error(f"Ошибка сканирования Wi-Fi через API: {e}\n{buf.getvalue()}")
+            res = {'error': str(e)}, 500, {'Content-Type': 'application/json'}
+        log.info("[TRACE EXIT] api_wifi_scan")
+        return res
+
     @app.route('/api/trigger-bell', methods=['POST', 'OPTIONS'])
     async def api_trigger_bell(request):
         log.info("[TRACE ENTER] api_trigger_bell()")

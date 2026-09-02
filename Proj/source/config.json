@@ -17,33 +17,28 @@
   "resume_playback": true,
 
   // Сохранённая позиция остановки воспроизведения в байтах (0 = с начала)
-  "last_play_pos_bytes": 0,
+  "last_play_pos_bytes": 602156,
 
   // Сохранённая позиция остановки воспроизведения в секундах (0 = с начала)
-  "last_play_pos_sec": 0,
+  "last_play_pos_sec": 9.41,
 
   // Список Wi-Fi сетей для автоматического выбора ближайшей с наилучшим сигналом
-  "wifi_networks": [
-    {
-      "ssid": "MyHome_555",
-      "password": "anton123"
-    }
-  ],
+  "wifi_networks": [{"ssid": "MyHome_555", "password": "ENC:GVzJ8MGTeGtInaizDig8+w=="}, {"ssid": "MyHomeMain", "password": "ENC:GVzJ8MGTeGtInaizDig8+w=="}],
 
   // Название вашей домашней Wi-Fi сети (для обратной совместимости)
   "wifi_ssid": "MyHome_555",
 
   // Пароль вашей домашней Wi-Fi сети (шифруется автоматически при первом запуске)
-  "wifi_password": "anton123",
+  "wifi_password": "ENC:GVzJ8MGTeGtInaizDig8+w==",
 
   // Пароль для загрузки файлов и управления через веб-интерфейс
-  "upload_password": "admin",
+  "upload_password": "ENC:iCI2//vwTweCt3pD/Wnukg==",
 
   // Название локальной точки доступа ESP32 (если не удалось подключиться к роутеру)
   "ap_ssid": "ESP32-Config",
 
   // Пароль к локальной точке доступа ESP32
-  "ap_password": "anton123",
+  "ap_password": "ENC:GVzJ8MGTeGtInaizDig8+w==",
 
   // Список полей конфигурации, которые автоматически шифруются алгоритмом AES-128
   "encrypted_fields": [

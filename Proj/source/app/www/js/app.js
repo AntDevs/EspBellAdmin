@@ -525,3 +525,54 @@ if (document.readyState === 'loading') {
     loadView('login.html');
     console.log("[TRACE EXIT] Direct script load initial view"); //[cite: 13]
 }
+
+
+async function openWifiScanModal() {
+    const modal = document.getElementById('wifiModal');
+    const listContainer = document.getElementById('wifiModalList');
+    if (!modal || !listContainer) return;
+    
+    modal.style.display = 'flex';
+    listContainer.innerHTML = '<p style="text-align:center; color:var(--color-muted);">Сканирование эфира...</p>';
+    
+    try {
+        const res = await fetchWithAuth('/api/wifi-scan');
+        if (res.ok) {
+            const data = await res.json();
+            const nets = data.networks || [];
+            if (nets.length === 0) {
+                listContainer.innerHTML = '<p style="text-align:center; color:var(--color-muted);">Сети не найдены</p>';
+                return;
+            }
+            listContainer.innerHTML = '';
+            nets.forEach(net => {
+                const item = document.createElement('div');
+                item.style.padding = '8px 12px';
+                item.style.border = '1px solid var(--color-border-light)';
+                item.style.borderRadius = 'var(--radius-md)';
+                item.style.cursor = 'pointer';
+                item.style.display = 'flex';
+                item.style.justifyContent = 'space-between';
+                item.style.alignItems = 'center';
+                item.style.marginBottom = '6px';
+                item.innerHTML = `<span><strong>${net.ssid}</strong></span><span style="font-size:12px; color:var(--color-muted);">${net.rssi} dBm</span>`;
+                item.onmouseover = () => item.style.background = 'var(--color-surface-subtle)';
+                item.onmouseout = () => item.style.background = 'transparent';
+                item.onclick = () => {
+                    addWifiNetworkField(net.ssid);
+                    closeWifiModal();
+                };
+                listContainer.appendChild(item);
+            });
+        } else {
+            listContainer.innerHTML = '<p style="text-align:center; color:#ef4444;">Ошибка сканирования</p>';
+        }
+    } catch (err) {
+        listContainer.innerHTML = '<p style="text-align:center; color:#ef4444;">Ошибка сети</p>';
+    }
+}
+
+function closeWifiModal() {
+    const modal = document.getElementById('wifiModal');
+    if (modal) modal.style.display = 'none';
+}
