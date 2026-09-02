@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CORS & Auth Test</title>
+    <style>
+        body { font-family: monospace; padding: 20px; max-width: 800px; margin: 0 auto; background: #1e1e1e; color: #cfcfcf; }
+        h2 { color: #fff; }
+        .control-group { background: #2d2d2d; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+        label { display: block; margin-bottom: 5px; color: #aaa; }
+        input { padding: 10px; font-size: 16px; width: 100%; margin-bottom: 15px; box-sizing: border-box; background: #1e1e1e; border: 1px solid #444; color: #fff; border-radius: 4px; }
+        button { padding: 12px 24px; font-size: 16px; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 4px; font-weight: bold; width: 100%; }
+        button:hover { background: #0056b3; }
+        pre { background: #000; padding: 15px; border: 1px solid #333; overflow-x: auto; white-space: pre-wrap; border-radius: 8px; min-height: 300px; }
+        .log-success { color: #4caf50; font-weight: bold; }
+        .log-error { color: #f44336; font-weight: bold; }
+        .log-info { color: #2196f3; }
+        .log-warning { color: #ff9800; }
+    </style>
+</head>
+<body>
+    <h2>Тест авторизации и CORS (Pure JS)</h2>
+    
+    <div class="control-group">
+        <label>Адрес ESP32:</label>
+        <input type="text" id="host" value="https://bell555.local">
+        
+        <label>Пароль (для хэша):</label>
+        <input type="password" id="password" value="anton123">
+        
+        <button id="testBtn">Запустить тест (Info -> Nonce -> Auth)</button>
+    </div>
+    
+    <h3>Журнал запросов:</h3>
+    <pre id="log">Ожидание запуска...</pre>
+
+    <script>
+        const logEl = document.getElementById('log');
+
+        function log(msg, type = 'info') {
+            const time = new Date().toLocaleTimeString();
+            let className = 'log-info';
+            if (type === 'error') className = 'log-error';
+            if (type === 'success') className = 'log-success';
+            if (type === 'warning') className = 'log-warning';
+            
+            logEl.innerHTML += `<span class="${className}">[${time}] ${msg}</span>\n`;
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+
+        // Простая реализация SHA-256 с использованием встроенного Web Crypto API
+        async function sha256(message) {
+            const msgBuffer = new TextEncoder().encode(message);                    
+            const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        document.getElementById('testBtn').addEventListener('click', async () => {
+            const host = document.getElementById('host').value.replace(/\/$/, '');
+            const password = document.getElementById('password').value;
+            
+            logEl.innerHTML = ''; // Очистить лог
+            log(`Начинаем тестирование связи с ${host}...`, 'info');
+
+            // --- ШАГ 1: GET /api/info ---
+            log(`\n--- 1. GET /api/info ---`);
+            try {
+                const resInfo = await fetch(`${host}/api/info`);
+                const textInfo = await resInfo.text();
+                if (resInfo.ok) log(`УСПЕХ (Status: ${resInfo.status})\nОтвет: ${textInfo}`, 'success');
+                else log(`ОШИБКА HTTP (Status: ${resInfo.status})\nОтвет: ${textInfo}`, 'error');
+            } catch (e) {
+                log(`ОШИБКА СЕТИ (CORS или отказ): ${e.message}`, 'error');
+            }
+
+            // --- ШАГ 2: GET /api/get-nonce ---
+            log(`\n--- 2. GET /api/get-nonce ---`);
+            let nonce = null;
+            try {
+                const resNonce = await fetch(`${host}/api/get-nonce`);
+                const textNonce = await resNonce.text();
+                if (resNonce.ok) {
+                    log(`УСПЕХ (Status: ${resNonce.status})\nОтвет: ${textNonce}`, 'success');
+                    try {
+                        const data = JSON.parse(textNonce);
+                        nonce = data.nonce;
+                    } catch(err) {
+                        log(`Не удалось распарсить JSON nonce!`, 'error');
+                    }
+                } else {
+                    log(`ОШИБКА HTTP (Status: ${resNonce.status})\nОтвет: ${textNonce}`, 'error');
+                }
+            } catch (e) {
+                log(`ОШИБКА СЕТИ (CORS или отказ): ${e.message}`, 'error');
+            }
+
+            // --- ШАГ 3: POST /api/verify-auth ---
+            if (nonce) {
+                log(`\n--- 3. POST /api/verify-auth ---`);
+                try {
+                    const hash = await sha256(nonce + password);
+                    log(`Сгенерирован хэш: ${hash}`, 'warning');
+                    log(`Отправляем POST-запрос с заголовками X-Auth-Hash и X-Auth-Nonce...`, 'info');
+                    
+                    const resAuth = await fetch(`${host}/api/verify-auth`, {
+                        method: 'POST',
+                        headers: {
+                            'X-Auth-Hash': hash,
+                            'X-Auth-Nonce': nonce
+                        }
+                    });
+                    const textAuth = await resAuth.text();
+                    
+                    if (resAuth.ok) {
+                        log(`УСПЕХ (Status: ${resAuth.status})\nОтвет: ${textAuth}`, 'success');
+                    } else {
+                        log(`ОШИБКА HTTP (Status: ${resAuth.status})\nОтвет: ${textAuth}`, 'error');
+                    }
+                } catch (e) {
+                    log(`ОШИБКА СЕТИ (CORS или отказ): ${e.message}`, 'error');
+                    log(`Браузер заблокировал POST запрос! Возможные причины:`, 'warning');
+                    log(`1. Microdot на ESP32 не имеет метода 'OPTIONS' для /api/verify-auth`, 'warning');
+                    log(`2. Сертификат HTTPS отклонен браузером`, 'warning');
+                }
+            } else {
+                log(`\nПропуск Шага 3, так как nonce не был получен на Шаге 2.`, 'error');
+            }
+            
+            log(`\nТестирование завершено.`, 'info');
+        });
+    </script>
+</body>
+</html>
