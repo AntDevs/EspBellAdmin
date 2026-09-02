@@ -114,8 +114,24 @@ function showContainerLoading(container, message = 'Загрузка...') {
         </div>`;
 }
 
+// Добавляем функцию рендера полей Wi-Fi
+function addWifiNetworkField(ssid = '') {
+    const container = document.getElementById('wifi_networks_container');
+    if (!container) return;
+    const row = document.createElement('div');
+    row.className = 'wifi-row';
+    row.style.display = 'flex';
+    row.style.gap = '8px';
+    row.innerHTML = `
+        <input type="text" class="wifi-ssid" placeholder="Название сети (SSID)" value="${ssid}" style="flex: 2;" autocomplete="off">
+        <input type="password" class="wifi-pass" placeholder="Пароль (оставьте пустым для старого)" style="flex: 2;" autocomplete="new-password">
+        <button type="button" onclick="this.parentElement.remove()" style="background-color: #ef4444; width: 44px; padding: 0;">✖</button>
+    `;
+    container.appendChild(row);
+}
+
 function updatePlayButtonUI(isPlaying) {
-    console.log("[TRACE ENTER] updatePlayButtonUI", isPlaying);
+    console.log("[TRACE ENTER] updatePlayButtonUI", isPlaying); //[cite: 13]
     try {
         const btn = document.getElementById('togglePlayBtn');
         if (btn) {
@@ -138,13 +154,13 @@ function updatePlayButtonUI(isPlaying) {
             }
         }
     } catch (err) {
-        console.error("[TRACE EXIT] updatePlayButtonUI -> error", err);
+        console.error("[TRACE EXIT] updatePlayButtonUI -> error", err); //[cite: 13]
     }
-    console.log("[TRACE EXIT] updatePlayButtonUI");
+    console.log("[TRACE EXIT] updatePlayButtonUI"); //[cite: 13]
 }
 
 async function toggleEsp32Audio() {
-    console.log("[TRACE ENTER] toggleEsp32Audio", { isEsp32Playing });
+    console.log("[TRACE ENTER] toggleEsp32Audio", { isEsp32Playing }); //[cite: 13]
     try {
         if (!isEsp32Playing) {
             await playOnEsp32();
@@ -152,13 +168,13 @@ async function toggleEsp32Audio() {
             await stopOnEsp32();
         }
     } catch (err) {
-        console.error("[TRACE EXIT] toggleEsp32Audio -> error", err);
+        console.error("[TRACE EXIT] toggleEsp32Audio -> error", err); //[cite: 13]
     }
-    console.log("[TRACE EXIT] toggleEsp32Audio");
+    console.log("[TRACE EXIT] toggleEsp32Audio"); //[cite: 13]
 }
 
 async function loadMainView(defaultTab = 'upload') {
-    console.log("[TRACE ENTER] loadMainView", defaultTab);
+    console.log("[TRACE ENTER] loadMainView", defaultTab); //[cite: 13]
     const container = document.getElementById('app-container');
     showContainerLoading(container, 'Загрузка интерфейса...');
     try {
@@ -167,10 +183,10 @@ async function loadMainView(defaultTab = 'upload') {
             throw new Error(`Не удалось загрузить /www/main.html (Код: ${response.status})`);
         }
         container.innerHTML = await response.text();
-        console.log("[TRACE EXIT] loadMainView -> main layout loaded");
+        console.log("[TRACE EXIT] loadMainView -> main layout loaded"); //[cite: 13]
         await switchTab(defaultTab);
     } catch (err) {
-        console.error("[TRACE EXIT] loadMainView -> error", err);
+        console.error("[TRACE EXIT] loadMainView -> error", err); //[cite: 13]
         container.innerHTML = `
             <div class="card">
                 <div class="icon-header">⚠️</div>
@@ -182,13 +198,13 @@ async function loadMainView(defaultTab = 'upload') {
 }
 
 async function switchTab(tabName) {
-    console.log("[TRACE ENTER] switchTab", tabName);
+    console.log("[TRACE ENTER] switchTab", tabName); //[cite: 13]
     const tabContent = document.getElementById('tab-content');
     const tabBtnAudio = document.getElementById('tabBtnAudio');
     const tabBtnConfig = document.getElementById('tabBtnConfig');
 
     if (!tabContent) {
-        console.warn("[TRACE EXIT] switchTab -> tab-content container not found, loading main view");
+        console.warn("[TRACE EXIT] switchTab -> tab-content container not found, loading main view"); //[cite: 13]
         await loadMainView(tabName);
         return;
     }
@@ -217,9 +233,9 @@ async function switchTab(tabName) {
         } else if (tabName === 'config') {
             loadConfigData();
         }
-        console.log("[TRACE EXIT] switchTab -> success", tabName);
+        console.log("[TRACE EXIT] switchTab -> success", tabName); //[cite: 13]
     } catch (err) {
-        console.error("[TRACE EXIT] switchTab -> error", err);
+        console.error("[TRACE EXIT] switchTab -> error", err); //[cite: 13]
         tabContent.innerHTML = `
             <div style="padding: 20px; text-align: center;">
                 <p style="color: #ef4444; font-size: 14px;">${err.message}</p>
@@ -229,11 +245,11 @@ async function switchTab(tabName) {
 }
 
 async function loadView(viewName) {
-    console.log("[TRACE ENTER] loadView", viewName);
+    console.log("[TRACE ENTER] loadView", viewName); //[cite: 13]
     if (viewName !== 'login.html') {
         const tabName = viewName.replace('.html', '');
         await loadMainView(tabName);
-        console.log("[TRACE EXIT] loadView -> redirected to loadMainView", tabName);
+        console.log("[TRACE EXIT] loadView -> redirected to loadMainView", tabName); //[cite: 13]
         return;
     }
     const container = document.getElementById('app-container');
@@ -244,9 +260,9 @@ async function loadView(viewName) {
             throw new Error(`Не удалось загрузить /www/${viewName} (Код: ${response.status})`);
         }
         container.innerHTML = await response.text();
-        console.log("[TRACE EXIT] loadView -> success", viewName);
+        console.log("[TRACE EXIT] loadView -> success", viewName); //[cite: 13]
     } catch (err) {
-        console.error("[TRACE EXIT] loadView -> error", err);
+        console.error("[TRACE EXIT] loadView -> error", err); //[cite: 13]
         container.innerHTML = `
             <div class="card">
                 <div class="icon-header">⚠️</div>
@@ -258,7 +274,7 @@ async function loadView(viewName) {
 }
 
 async function handleLogin(e) {
-    console.log("[TRACE ENTER] handleLogin");
+    console.log("[TRACE ENTER] handleLogin"); //[cite: 13]
     e.preventDefault();
     const pwdInput = document.getElementById('pwdInput').value;
     const loginStatus = document.getElementById('loginStatus');
@@ -272,7 +288,7 @@ async function handleLogin(e) {
         const verifyResp = await fetchWithAuth('/api/verify-auth', { method: 'POST' });
 
         if (verifyResp.ok) {
-            console.log("[TRACE EXIT] handleLogin -> Auth successful");
+            console.log("[TRACE EXIT] handleLogin -> Auth successful"); //[cite: 13]
             loadMainView('upload');
             // Кнопку намеренно не разблокируем здесь: сейчас произойдёт
             // полная замена контейнера через loadMainView(), а вместе с ним
@@ -281,22 +297,22 @@ async function handleLogin(e) {
             clearSavedPassword();
             setButtonLoading(submitBtn, false);
             const errData = await verifyResp.json();
-            console.log("[TRACE EXIT] handleLogin -> Auth failed", errData);
+            console.log("[TRACE EXIT] handleLogin -> Auth failed", errData); //[cite: 13]
             setStatusMessage(loginStatus, `❌ ${errData.error || 'Неверный пароль'}`, 'error');
         }
     } catch (err) {
         clearSavedPassword();
         setButtonLoading(submitBtn, false);
-        console.error("[TRACE EXIT] handleLogin -> Network error", err);
+        console.error("[TRACE EXIT] handleLogin -> Network error", err); //[cite: 13]
         setStatusMessage(loginStatus, '❌ Ошибка соединения', 'error');
     }
 }
 
 async function loadSystemInfo() {
-    console.log("[TRACE ENTER] loadSystemInfo");
+    console.log("[TRACE ENTER] loadSystemInfo"); //[cite: 13]
     const diskInfo = document.getElementById('diskInfo');
     if (!diskInfo) {
-        console.log("[TRACE EXIT] loadSystemInfo (no diskInfo element)");
+        console.log("[TRACE EXIT] loadSystemInfo (no diskInfo element)"); //[cite: 13]
         return;
     }
     setStatusLoading(diskInfo, 'Загрузка сведений о памяти...');
@@ -319,15 +335,15 @@ async function loadSystemInfo() {
         isEsp32Playing = !!data.isPlaying;
         updatePlayButtonUI(isEsp32Playing);
 
-        console.log("[TRACE EXIT] loadSystemInfo -> Loaded info", data);
+        console.log("[TRACE EXIT] loadSystemInfo -> Loaded info", data); //[cite: 13]
     } catch (e) {
-        console.error("[TRACE EXIT] loadSystemInfo -> Exception", e);
+        console.error("[TRACE EXIT] loadSystemInfo -> Exception", e); //[cite: 13]
         diskInfo.innerText = "💾 Память ESP32 готова к загрузке";
     }
 }
 
 async function loadConfigData() {
-    console.log("[TRACE ENTER] loadConfigData");
+    console.log("[TRACE ENTER] loadConfigData"); //[cite: 13]
     const status = document.getElementById('configStatus');
     if (status) setStatusLoading(status, 'Загрузка настроек...');
 
@@ -336,7 +352,20 @@ async function loadConfigData() {
 
         if (res.ok) {
             const cfg = await res.json();
-            console.log("[TRACE LOAD CONFIG DATA]", cfg);
+            console.log("[TRACE LOAD CONFIG DATA]", cfg); //[cite: 13]
+            
+            // Заполнение динамического массива Wi-Fi
+            const wifiContainer = document.getElementById('wifi_networks_container');
+            if (wifiContainer) {
+                wifiContainer.innerHTML = '';
+                const nets = cfg.wifi_networks || [];
+                // Обратная совместимость с одиночным SSID
+                if (nets.length === 0 && cfg.wifi_ssid) {
+                    nets.push({ssid: cfg.wifi_ssid});
+                }
+                nets.forEach(n => addWifiNetworkField(n.ssid));
+            }
+            
             document.getElementById('cfg_boot_mode').value = cfg.boot_mode || 'music_first';
             document.getElementById('cfg_repeat_count').value = cfg.repeat_count || 1;
             document.getElementById('cfg_max_duration').value = cfg.max_play_duration_sec || 0;
@@ -345,22 +374,22 @@ async function loadConfigData() {
             document.getElementById('cfg_auth_smart_timeout').value = cfg.auth_smart_timeout_sec || 600;
             document.getElementById('cfg_last_pos_sec').value = cfg.last_play_pos_sec !== undefined ? cfg.last_play_pos_sec : 0;
             document.getElementById('cfg_resume_playback').checked = !!cfg.resume_playback;
-            document.getElementById('cfg_wifi_ssid').value = cfg.wifi_ssid || '';
             document.getElementById('cfg_upload_password').value = getSavedPassword();
+            
             if (status) setStatusMessage(status, "");
-            console.log("[TRACE EXIT] loadConfigData -> Success");
+            console.log("[TRACE EXIT] loadConfigData -> Success"); //[cite: 13]
         } else {
-            console.warn("[TRACE EXIT] loadConfigData -> Response not OK");
+            console.warn("[TRACE EXIT] loadConfigData -> Response not OK"); //[cite: 13]
             if (status) setStatusMessage(status, '❌ Ошибка загрузки настроек', 'error');
         }
     } catch (e) {
-        console.error("[TRACE EXIT] loadConfigData -> Error", e);
+        console.error("[TRACE EXIT] loadConfigData -> Error", e); //[cite: 13]
         if (status) setStatusMessage(status, '❌ Сбой связи с ESP32', 'error');
     }
 }
 
 async function saveConfig(e) {
-    console.log("[TRACE ENTER] saveConfig");
+    console.log("[TRACE ENTER] saveConfig"); //[cite: 13]
     e.preventDefault();
     const status = document.getElementById('configStatus');
     const submitBtn = document.getElementById('saveConfigBtn');
@@ -369,6 +398,15 @@ async function saveConfig(e) {
 
     try {
         const newUploadPwd = document.getElementById('cfg_upload_password').value;
+
+        // Сборка массива сетей из формы
+        const wifiNodes = document.querySelectorAll('.wifi-row');
+        const wifiNetworks = [];
+        wifiNodes.forEach(node => {
+            const ssid = node.querySelector('.wifi-ssid').value.trim();
+            const pass = node.querySelector('.wifi-pass').value;
+            if (ssid) wifiNetworks.push({ ssid: ssid, password: pass });
+        });
 
         const payload = {
             boot_mode: document.getElementById('cfg_boot_mode').value,
@@ -379,16 +417,11 @@ async function saveConfig(e) {
             auth_smart_timeout_sec: parseInt(document.getElementById('cfg_auth_smart_timeout').value),
             last_play_pos_sec: parseFloat(document.getElementById('cfg_last_pos_sec').value) || 0,
             resume_playback: document.getElementById('cfg_resume_playback').checked,
-            wifi_ssid: document.getElementById('cfg_wifi_ssid').value,
+            wifi_networks: wifiNetworks,
             upload_password: newUploadPwd
         };
 
-        const newWifiPwd = document.getElementById('cfg_wifi_password').value;
-        if (newWifiPwd) {
-            payload.wifi_password = newWifiPwd;
-        }
-
-        console.log("[TRACE SAVE CONFIG PAYLOAD]", payload);
+        console.log("[TRACE SAVE CONFIG PAYLOAD]", payload); //[cite: 13]
 
         const res = await fetchWithAuth('/api/config', {
             method: 'POST',
@@ -400,22 +433,22 @@ async function saveConfig(e) {
             setSavedPassword(newUploadPwd);
             setButtonLoading(submitBtn, false);
             setStatusMessage(status, '✅ Настройки сохранены в config.json!', 'success');
-            console.log("[TRACE EXIT] saveConfig -> Saved successfully");
+            console.log("[TRACE EXIT] saveConfig -> Saved successfully"); //[cite: 13]
         } else {
             const err = await res.json();
             setButtonLoading(submitBtn, false);
             setStatusMessage(status, `❌ ${err.error || 'Ошибка записи'}`, 'error');
-            console.warn("[TRACE EXIT] saveConfig -> Failed", err);
+            console.warn("[TRACE EXIT] saveConfig -> Failed", err); //[cite: 13]
         }
     } catch (err) {
-        console.error("[TRACE EXIT] saveConfig -> Exception", err);
+        console.error("[TRACE EXIT] saveConfig -> Exception", err); //[cite: 13]
         setButtonLoading(submitBtn, false);
         setStatusMessage(status, '❌ Ошибка сети при сохранении', 'error');
     }
 }
 
 async function playOnEsp32() {
-    console.log("[TRACE ENTER] playOnEsp32");
+    console.log("[TRACE ENTER] playOnEsp32"); //[cite: 13]
     const status = document.getElementById('status');
     const btn = document.getElementById('togglePlayBtn');
     setButtonLoading(btn, true, 'Запуск...');
@@ -429,15 +462,15 @@ async function playOnEsp32() {
             setStatusMessage(status, '▶ Воспроизведение заведено на ESP32', 'success');
             isEsp32Playing = true;
             updatePlayButtonUI(true);
-            console.log("[TRACE EXIT] playOnEsp32 -> Playing started");
+            console.log("[TRACE EXIT] playOnEsp32 -> Playing started"); //[cite: 13]
         } else {
             setStatusMessage(status, `❌ ${result.error || 'Ошибка воспроизведения'}`, 'error');
             isEsp32Playing = false;
             updatePlayButtonUI(false);
-            console.warn("[TRACE EXIT] playOnEsp32 -> Server rejected play request", result);
+            console.warn("[TRACE EXIT] playOnEsp32 -> Server rejected play request", result); //[cite: 13]
         }
     } catch (err) {
-        console.error("[TRACE EXIT] playOnEsp32 -> Exception", err);
+        console.error("[TRACE EXIT] playOnEsp32 -> Exception", err); //[cite: 13]
         setStatusMessage(status, '❌ Сбой соединения с ESP32', 'error');
         isEsp32Playing = false;
         updatePlayButtonUI(false);
@@ -445,7 +478,7 @@ async function playOnEsp32() {
 }
 
 async function stopOnEsp32() {
-    console.log("[TRACE ENTER] stopOnEsp32");
+    console.log("[TRACE ENTER] stopOnEsp32"); //[cite: 13]
     const status = document.getElementById('status');
     const btn = document.getElementById('togglePlayBtn');
     setButtonLoading(btn, true, 'Остановка...');
@@ -454,10 +487,10 @@ async function stopOnEsp32() {
 
         if (resp.ok) {
             setStatusMessage(status, '⏹ Воспроизведение остановлено', 'neutral');
-            console.log("[TRACE EXIT] stopOnEsp32 -> Playback stopped");
+            console.log("[TRACE EXIT] stopOnEsp32 -> Playback stopped"); //[cite: 13]
         }
     } catch (err) {
-        console.error("[TRACE EXIT] stopOnEsp32 -> Exception", err);
+        console.error("[TRACE EXIT] stopOnEsp32 -> Exception", err); //[cite: 13]
         setStatusMessage(status, '❌ Сбой соединения с ESP32', 'error');
     } finally {
         isEsp32Playing = false;
@@ -466,29 +499,29 @@ async function stopOnEsp32() {
 }
 
 async function logout() {
-    console.log("[TRACE ENTER] logout");
+    console.log("[TRACE ENTER] logout"); //[cite: 13]
     try {
         await fetch('/api/logout', { method: 'POST' });
-        console.log("[TRACE EXIT] logout -> Reset server timeout success");
+        console.log("[TRACE EXIT] logout -> Reset server timeout success"); //[cite: 13]
     } catch (err) {
-        console.error("[TRACE EXIT] logout -> Error notifying server", err);
+        console.error("[TRACE EXIT] logout -> Error notifying server", err); //[cite: 13]
     }
 
     clearSavedPassword();
     clearAudioState();
     isEsp32Playing = false;
-    console.log("[TRACE EXIT] logout");
+    console.log("[TRACE EXIT] logout"); //[cite: 13]
     loadView('login.html');
 }
 
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
-        console.log("[TRACE ENTER] DOMContentLoaded event listener");
+        console.log("[TRACE ENTER] DOMContentLoaded event listener"); //[cite: 13]
         loadView('login.html');
-        console.log("[TRACE EXIT] DOMContentLoaded event listener");
+        console.log("[TRACE EXIT] DOMContentLoaded event listener"); //[cite: 13]
     });
 } else {
-    console.log("[TRACE ENTER] Direct script load initial view");
+    console.log("[TRACE ENTER] Direct script load initial view"); //[cite: 13]
     loadView('login.html');
-    console.log("[TRACE EXIT] Direct script load initial view");
+    console.log("[TRACE EXIT] Direct script load initial view"); //[cite: 13]
 }

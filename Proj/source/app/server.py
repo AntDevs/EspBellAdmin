@@ -7,9 +7,7 @@ import logging
 import uasyncio as asyncio
 from hal.power_manager import power_mgr
 
-
 from microdot import Microdot, Request, Response, send_file
-# from microdot import Microdot, Request, Response, send_file
 from microdot.cors import CORS 
 from app.security import SecurityManager
 from app.player import AudioPlayer
@@ -29,21 +27,11 @@ def init_server(config):
 
     app = Microdot()
 
-    # cors = CORS(
-    #     app, 
-    #     allowed_origins=['http://localhost:3000','*/**'],  # Replace with your frontend domain
-    #     allowed_methods=['GET', 'POST', 'OPTIONS'], # Explicitly include POST and OPTIONS
-    #     allowed_headers=['Content-Type', 'Authorization'] # Add headers your frontend sends
-    # )
-
     cors = CORS(
         app, 
-        # Разрешаем все домены (или укажите ваш ['http://localhost:3000'])
         allowed_origins=['*'],  
         allowed_methods=['GET', 'POST', 'OPTIONS', 'PUT', 'DELETE'], 
-        # Добавляем ВСЕ кастомные заголовки, которые использует наш фронтенд:
         allowed_headers=['Content-Type', 'Authorization', 'X-Auth-Hash', 'X-Auth-Nonce', 'X-Auth-Token', 'X-File-Name'],
-        # И самое главное - добавляем кастомный заголовок в ответ плагина для PNA (Private Network Access)
         expose_headers=['Access-Control-Allow-Private-Network']
     )
 
@@ -72,6 +60,7 @@ def init_server(config):
                 total += os.stat(f"{media_dir}/{f}")[6]
         except Exception as e:
             log.error(f"Ошибка подсчета размера файлов media: {e}")
+            
         log.info("[TRACE EXIT] get_media_size -> %s B", total)
         return total
 
@@ -115,18 +104,11 @@ def init_server(config):
     # 1. ОБРАБОТКА ВХОДЯЩИХ ЗАПРОСОВ, PREFLIGHT OPTIONS И CORS
     # =========================================================================
     def get_allowed_origin(request):
-        """
-        Проверка заголовка Origin.
-        При наличии Origin сервер возвращает точную строку запрашивающего домена
-        для поддержки любых cross-domain клиентов (Android, Web, dev-серверы),
-        что также удовлетворяет требованию Access-Control-Allow-Credentials.
-        """
         origin = request.headers.get('Origin') or request.headers.get('origin') or ''
         log.info("[TRACE ENTER] get_allowed_origin(origin=%s, uri=%s, method=%s)", origin, request.path, request.method)
 
         allowed = config.get('allowed_origins', ['*'])
 
-        # Если в конфиге разрешены все ('*'), или origin совпадает, или origin передан клиентом
         if '*' in allowed or not allowed or origin in allowed or origin:
             res_origin = origin if origin else '*'
             log.info("[TRACE EXIT] get_allowed_origin(origin=%s, uri=%s, method=%s) -> allowed", res_origin, request.path, request.method)
@@ -147,48 +129,10 @@ def init_server(config):
             else:
                 response.headers['Access-Control-Allow-Origin'] = '*'
 
-            # # ---> ДОБАВЛЯЕМ ПРОВЕРКУ PNA <---
-            # if request.headers.get('Access-Control-Request-Private-Network') or request.headers.get('access-control-request-private-network'):
-            #     response.headers['Access-Control-Allow-Private-Network'] = 'true'
-
-            # req_headers = request.headers.get('Access-Control-Request-Headers') or request.headers.get('access-control-request-headers')
-            # if req_headers:
-            #     response.headers['Access-Control-Allow-Headers'] = req_headers
-            # else:
-            #     response.headers['Access-Control-Allow-Headers'] = 'Content-Type, X-Auth-Nonce, X-Auth-Hash, X-Auth-Token, X-File-Name, Authorization'
-
-            # response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
             response.headers['Access-Control-Expose-Headers'] = '*'
-            # response.headers['Connection'] = 'close'
         except Exception as e:
             log.error(f"Ошибка в set_allowed_origin_headers: {e}")
-        log.info("[TRACE EXIT] set_allowed_origin_headers (uri=%s, method=%s)", request.path, request.method)            
-
-    # def set_allowed_origin_headersOld(request, response):
-    #     log.info("[TRACE ENTER] set_allowed_origin_headers (uri=%s, method=%s)", request.path, request.method)
-    #     try:
-    #         allowed_origin = get_allowed_origin(request)
-
-    #         if allowed_origin and allowed_origin != '*':
-    #             response.headers['Access-Control-Allow-Origin'] = allowed_origin
-    #             response.headers['Access-Control-Allow-Credentials'] = 'true'
-    #         else:
-    #             response.headers['Access-Control-Allow-Origin'] = '*'
-
-    #         req_headers = request.headers.get('Access-Control-Request-Headers') or request.headers.get('access-control-request-headers')
-    #         if req_headers:
-    #             response.headers['Access-Control-Allow-Headers'] = req_headers
-    #         else:
-    #             response.headers['Access-Control-Allow-Headers'] = 'Content-Type, X-Auth-Nonce, X-Auth-Hash, X-Auth-Token, X-File-Name, Authorization'
-
-    #         response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
-    #         response.headers['Access-Control-Expose-Headers'] = '*'
-    #         response.headers['Access-Control-Allow-Private-Network'] = 'true'
-    #         response.headers['Connection'] = 'close'
-    #     except Exception as e:
-    #         log.error(f"Ошибка в set_allowed_origin_headers: {e}")
-    #     log.info("[TRACE EXIT] set_allowed_origin_headers allowed_origin=%s (uri=%s, method=%s)",
-    #              allowed_origin, request.path, request.method)
+        log.info("[TRACE EXIT] set_allowed_origin_headers (uri=%s, method=%s)", request.path, request.method)           
 
     @app.before_request
     async def process_before_request(request):
@@ -199,21 +143,16 @@ def init_server(config):
         except Exception as e:
             log.error(f"Ошибка в notify_activity: {e}")
 
-        
         if request.method == 'OPTIONS':            
             res = Response('', status_code=204)            
             set_allowed_origin_headers(request, res)
-            # res.headers['Access-Control-Max-Age'] = '86400'
             log.info("[TRACE EXIT] process_before_request(uri=%s, method=%s) -> OPTIONS 204", request.path, request.method)
             return res
         log.info("[TRACE EXIT] process_before_request(uri=%s, method=%s)", request.path, request.method)
 
-    # Чтобы плагин действительно отдавал Access-Control-Allow-Private-Network: true на OPTIONS запросы,
-    # нам нужно чуть-чуть пропатчить его ответ (так как в самом плагине нет встроенной поддержки PNA)
     @app.after_request
     async def add_pna_header(request, response):
         log.info("[TRACE ENTER] after_request add_pna_header(uri=%s, method=%s)", request.path, request.method)
-        # Добавляем заголовок PNA ко всем ответам (и OPTIONS, и обычным)
         response.headers['Access-Control-Allow-Private-Network'] = 'true'
         log.info("[TRACE EXIT] after_request add_pna_header(uri=%s, method=%s)", request.path, request.method)
         return response
@@ -285,13 +224,11 @@ def init_server(config):
         log.info("[TRACE EXIT] serve_www")
         return res
 
-
     @app.route('/<path:path>', methods=['OPTIONS'])
     async def cors_options(request, path):
         log.info(f"[TRACE ENTER] cors_options(path={path}, uri={request.path}, method={request.method})")
         res = Response('', status_code=204)
         set_allowed_origin_headers(request, res)
-        # res.headers['Access-Control-Max-Age'] = '86400'
         log.info(f"[TRACE EXIT] cors_options(path={path}, uri={request.path}, method={request.method})")
         return res
 
@@ -359,6 +296,7 @@ def init_server(config):
                 'last_play_pos_bytes': config.get('last_play_pos_bytes', 0),
                 'last_play_pos_sec': config.get('last_play_pos_sec', 0),
                 'wifi_ssid': config.get('wifi_ssid', ''),
+                'wifi_networks': config.get('wifi_networks', []),
                 'upload_password': safe_decrypt(config.get('upload_password', '')),
                 'ap_ssid': config.get('ap_ssid', 'ESP32-Config'),
                 'ap_password': safe_decrypt(config.get('ap_password', 'anton123'))
@@ -385,6 +323,14 @@ def init_server(config):
                 log.info("[TRACE EXIT] save_config_api -> 400 Bad Request")
                 return {'error': 'Пустые данные конфигурации'}, 400, {'Content-Type': 'application/json'}
 
+            if 'wifi_networks' in body:
+                existing_nets = config.get('wifi_networks', [])
+                for new_net in body['wifi_networks']:
+                    if not new_net.get('password'):
+                        old_net = next((x for x in existing_nets if x.get('ssid') == new_net.get('ssid')), None)
+                        if old_net:
+                            new_net['password'] = old_net.get('password', '')
+
             with open('config.json', 'r') as fr:
                 raw_content = fr.read()
 
@@ -392,7 +338,7 @@ def init_server(config):
                 'boot_mode', 'smart_timeout_sec', 'auth_smart_timeout_sec', 'repeat_count',
                 'max_play_duration_sec', 'fade_out_ms', 'resume_playback',
                 'last_play_pos_bytes', 'last_play_pos_sec',
-                'wifi_ssid', 'wifi_password', 'upload_password', 'ap_ssid', 'ap_password'
+                'wifi_ssid', 'wifi_password', 'wifi_networks', 'upload_password', 'ap_ssid', 'ap_password'
             ]
 
             enc_fields = config.get('encrypted_fields', ['wifi_password', 'upload_password', 'ap_password'])
@@ -433,6 +379,17 @@ def init_server(config):
                     elif isinstance(final_val, (int, float)):
                         if re.search(r'"' + key + r'"\s*:\s*\d+(\.\d+)?', raw_content):
                             raw_content = re.sub(r'"' + key + r'"\s*:\s*\d+(\.\d+)?', f'"{key}": {final_val}', raw_content)
+                    elif isinstance(final_val, list):
+                        json_arr = json.dumps(final_val)
+                        if re.search(r'"' + key + r'"\s*:\s*\[.*?\]', raw_content):
+                            raw_content = re.sub(r'"' + key + r'"\s*:\s*\[.*?\]', f'"{key}": {json_arr}', raw_content)
+                        elif re.search(r'"' + key + r'"\s*:\s*".*?"', raw_content):
+                            raw_content = re.sub(r'"' + key + r'"\s*:\s*".*?"', f'"{key}": {json_arr}', raw_content)
+                        else:
+                            stripped_content = raw_content.rstrip()
+                            if stripped_content.endswith('}'):
+                                stripped_content = stripped_content[:-1]
+                            raw_content = stripped_content + f',\n  "{key}": {json_arr}\n}}'
                     else:
                         str_val = str(final_val)
                         if re.search(r'"' + key + r'"\s*:\s*"[^"]*"', raw_content):
@@ -446,9 +403,13 @@ def init_server(config):
             return {'status': 'saved'}, 200, {'Content-Type': 'application/json'}
 
         except Exception as e:
-            log.error(f"Ошибка сохранения config.json: {e}")
+            import sys, io
+            buf = io.StringIO()
+            sys.print_exception(e, buf)
+            err_trace = buf.getvalue()
+            log.error(f"Ошибка сохранения config.json: {type(e).__name__}: {e}\n{err_trace}")
             log.info("[TRACE EXIT] save_config_api -> 500 Exception")
-            return {'error': f'Ошибка сохранения: {e}'}, 500, {'Content-Type': 'application/json'}
+            return {'error': f'Ошибка сохранения: {type(e).__name__}: {e}'}, 500, {'Content-Type': 'application/json'}
 
     @app.route('/api/play', methods=['POST', 'OPTIONS'])
     async def play_sound(request):
@@ -503,7 +464,7 @@ def init_server(config):
         return res
 
     @app.route('/api/verify-auth', methods=['OPTIONS'])
-    async def verify_auth(request):
+    async def verify_auth_options(request):
         """Переключение в авторизованный режим: таймаут 600 сек."""
         log.info("[TRACE ENTER] verify_auth() OPTIONS")
         return Response('', 204)
@@ -555,7 +516,6 @@ def init_server(config):
     async def upload(request):
         log.info("Обработчик POST /upload вызван")
 
-        # Определение CORS заголовков локально для Response
         allowed_origin = get_allowed_origin(request)
         if allowed_origin and allowed_origin != '*':
             CORS_HEADERS = {
@@ -565,7 +525,6 @@ def init_server(config):
         else:
             CORS_HEADERS = {'Access-Control-Allow-Origin': '*'}
 
-        # 1. Определение размера передаваемого файла
         content_length = getattr(request, 'content_length', 0) or 0
         if not content_length:
             try:
@@ -575,13 +534,11 @@ def init_server(config):
 
         log.info("Ожидаемый размер загрузки: %s байт", content_length)
 
-        # 2. Проверка авторизации
         required_password = config.get('upload_password', '')
         is_auth_ok, auth_msg = security.verify_upload_auth(request, required_password)
 
         if not is_auth_ok:
             log.warning("Ошибка авторизации загрузки: %s. Очистка входного потока...", auth_msg)
-            # Вычитываем остаток потока, чтобы сокет не сбросил TCP RST в браузер
             try:
                 while content_length > 0:
                     dummy = await request.stream.read(min(2048, content_length))
@@ -592,7 +549,6 @@ def init_server(config):
                 pass
             return Response(f"Ошибка авторизации: {auth_msg}", status_code=401, headers=CORS_HEADERS)
 
-        # 3. Имя файла и проверка расширения
         original_filename = request.headers.get('x-file-name', '') or request.headers.get('X-File-Name', '')
         if not original_filename and 'filename' in request.args:
             original_filename = request.args.get('filename', '')
@@ -602,7 +558,6 @@ def init_server(config):
             file_ext = original_filename.split('.')[-1].lower()
             if file_ext not in allowed_exts:
                 log.error("Запрещенный тип файла: .%s", file_ext)
-                # Дренаж сокета перед ответом
                 try:
                     while content_length > 0:
                         dummy = await request.stream.read(min(2048, content_length))
@@ -613,12 +568,10 @@ def init_server(config):
                     pass
                 return Response(f"Ошибка: Запрещенный тип файла (разрешены: {', '.join(allowed_exts)})!", status_code=400, headers=CORS_HEADERS)
 
-        # 4. Проверка лимитов размера
         if content_length > max_size:
             log.error("Заявленный размер %s B > лимита %s B", content_length, max_size)
             return Response(f'Ошибка: Файл превышает лимит {max_size // (1024*1024)} МБ!', status_code=400, headers=CORS_HEADERS)
 
-        # 5. Очистка старых медиа ПЕРЕД проверкой свободного места, чтобы учесть освободившееся пространство
         clear_media()
 
         free_bytes = get_free_space()
@@ -626,7 +579,6 @@ def init_server(config):
             log.error("Недостаточно места на Flash (%s B > %s B)", content_length, free_bytes)
             return Response('Ошибка: Недостаточно места во Flash-памяти!', status_code=400, headers=CORS_HEADERS)
 
-        # 6. Открытие файла на запись
         media_dir = config.get('media_dir', '/media')
         target_filename = config.get('target_filename', 'bell.wav')
         filepath = f"{media_dir}/{target_filename}"
@@ -651,7 +603,6 @@ def init_server(config):
                         remaining -= len(chunk)
                         await asyncio.sleep_ms(1)
                 else:
-                    # Если Content-Length не был указан, читаем до закрытия потока
                     while True:
                         chunk = await request.stream.read(chunk_size)
                         if not chunk:
@@ -662,7 +613,6 @@ def init_server(config):
                         saved_bytes += len(chunk)
                         await asyncio.sleep_ms(1)
 
-            # Сброс позиции воспроизведения
             config['last_play_pos_bytes'] = 0
             config['last_play_pos_sec'] = 0
             try:
@@ -688,7 +638,6 @@ def init_server(config):
     async def upload_old(request):
         log.info("[TRACE ENTER] upload()")
 
-        # 1. Определение размера передаваемого файла
         content_length = getattr(request, 'content_length', 0) or 0
         if not content_length:
             try:
@@ -698,7 +647,6 @@ def init_server(config):
 
         log.info("Ожидаемый размер загрузки: %s байт", content_length)
 
-        # 2. Проверка авторизации
         required_password = config.get('upload_password', '')
         is_auth_ok, auth_msg = security.verify_upload_auth(request, required_password)
 

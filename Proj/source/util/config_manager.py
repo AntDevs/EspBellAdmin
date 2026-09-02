@@ -9,7 +9,7 @@ config = None  # Глобальная переменная для хранени
 
 def load_config():
     """Загрузка конфигурации с отложенной инициализацией криптографии."""
-    log.info("[TRACE ENTER] load_config()")
+    log.info("[TRACE ENTER] load_config()") #[cite: 10]
     try:
         global config
         if config is not None: 
@@ -39,26 +39,42 @@ def load_config():
             if val and not str(val).startswith("ENC:"):
                 unencrypted_vals[k] = str(val)
 
+        # Проверка открытых паролей внутри массива Wi-Fi
+        wifi_nets = cfg.get('wifi_networks', [])
+        unencrypted_wifi = []
+        for i, net in enumerate(wifi_nets):
+            pwd = net.get('password', '')
+            if pwd and not str(pwd).startswith("ENC:"):
+                unencrypted_wifi.append((i, str(pwd)))
+
         # Подгружаем SecurityManager только если реально нужно зашифровать новые пароли
-        if unencrypted_vals:
+        if unencrypted_vals or unencrypted_wifi:
             from app.security import SecurityManager
             security_mgr = SecurityManager()
             
             for k, raw_val in unencrypted_vals.items():
                 cfg[k] = security_mgr.encrypt_str(raw_val)
+
+            for i, raw_pwd in unencrypted_wifi:
+                cfg['wifi_networks'][i]['password'] = security_mgr.encrypt_str(raw_pwd)
                 
             try:
                 with open('config.json', 'r') as fr:
                     raw_content = fr.read()
+                    
                 for k, raw_val in unencrypted_vals.items():
                     raw_content = raw_content.replace(f'"{raw_val}"', f'"{cfg[k]}"')
+                    
+                for i, raw_pwd in unencrypted_wifi:
+                    raw_content = raw_content.replace(f'"{raw_pwd}"', f'"{cfg["wifi_networks"][i]["password"]}"')
+                    
                 with open('config.json', 'w') as fw:
                     fw.write(raw_content)
                 log.info("Новые пароли зашифрованы.")
             except Exception as ex:
                 log.error(f"Не удалось обновить config.json: {ex}")
 
-        log.info("[TRACE EXIT] load_config")
+        log.info("[TRACE EXIT] load_config") #[cite: 10]
         config = cfg  # Сохраняем загруженную конфигурацию в глобальную переменную
         return cfg
     except Exception as e:

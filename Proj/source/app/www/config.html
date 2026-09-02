@@ -45,14 +45,12 @@
         <label for="cfg_resume_playback" style="margin: 0;">Возобновлять воспроизведение с места остановки</label>
     </div>
 
-    <div class="form-group">
-        <label for="cfg_wifi_ssid">SSID Wi-Fi сети:</label>
-        <input type="text" id="cfg_wifi_ssid" placeholder="Оставьте пустым для AP режима" autocomplete="off">
-    </div>
-
-    <div class="form-group">
-        <label for="cfg_wifi_password">Пароль Wi-Fi сети:</label>
-        <input type="password" id="cfg_wifi_password" placeholder="Пароль сети (если меняется)" autocomplete="new-password">
+    <div class="form-group" style="border: 1px solid var(--color-border-light); padding: 12px; border-radius: var(--radius-md); background: var(--color-surface-subtle);">
+        <label>Wi-Fi сети (выбирается сеть с самым мощным сигналом):</label>
+        <div id="wifi_networks_container" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px;">
+            <!-- Динамически заполняется через JS -->
+        </div>
+        <button type="button" class="btn-secondary" onclick="addWifiNetworkField()" style="margin: 0; font-size: 14px; padding: 8px;">+ Добавить Wi-Fi сеть</button>
     </div>
 
     <div class="form-group">
