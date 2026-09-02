@@ -29,11 +29,22 @@ def init_server(config):
 
     app = Microdot()
 
+    # cors = CORS(
+    #     app, 
+    #     allowed_origins=['http://localhost:3000','*/**'],  # Replace with your frontend domain
+    #     allowed_methods=['GET', 'POST', 'OPTIONS'], # Explicitly include POST and OPTIONS
+    #     allowed_headers=['Content-Type', 'Authorization'] # Add headers your frontend sends
+    # )
+
     cors = CORS(
         app, 
-        allowed_origins=['http://localhost:3000'],  # Replace with your frontend domain
-        allowed_methods=['GET', 'POST', 'OPTIONS'], # Explicitly include POST and OPTIONS
-        allowed_headers=['Content-Type', 'Authorization'] # Add headers your frontend sends
+        # Разрешаем все домены (или укажите ваш ['http://localhost:3000'])
+        allowed_origins=['*'],  
+        allowed_methods=['GET', 'POST', 'OPTIONS', 'PUT', 'DELETE'], 
+        # Добавляем ВСЕ кастомные заголовки, которые использует наш фронтенд:
+        allowed_headers=['Content-Type', 'Authorization', 'X-Auth-Hash', 'X-Auth-Nonce', 'X-Auth-Token', 'X-File-Name'],
+        # И самое главное - добавляем кастомный заголовок в ответ плагина для PNA (Private Network Access)
+        expose_headers=['Access-Control-Allow-Private-Network']
     )
 
     app.max_content_length = max_size
@@ -111,17 +122,17 @@ def init_server(config):
         что также удовлетворяет требованию Access-Control-Allow-Credentials.
         """
         origin = request.headers.get('Origin') or request.headers.get('origin') or ''
-        log.info("[TRACE ENTER] get_allowed_origin(origin=%s)", origin)
+        log.info("[TRACE ENTER] get_allowed_origin(origin=%s, uri=%s, method=%s)", origin, request.path, request.method)
 
         allowed = config.get('allowed_origins', ['*'])
 
         # Если в конфиге разрешены все ('*'), или origin совпадает, или origin передан клиентом
         if '*' in allowed or not allowed or origin in allowed or origin:
             res_origin = origin if origin else '*'
-            log.info("[TRACE EXIT] get_allowed_origin(origin=%s) -> allowed", res_origin)
+            log.info("[TRACE EXIT] get_allowed_origin(origin=%s, uri=%s, method=%s) -> allowed", res_origin, request.path, request.method)
             return res_origin
 
-        log.info("[TRACE EXIT] get_allowed_origin -> *")
+        log.info("[TRACE EXIT] get_allowed_origin(uri=%s, method=%s) -> *", request.path, request.method)
         return '*'
 
 
@@ -136,47 +147,48 @@ def init_server(config):
             else:
                 response.headers['Access-Control-Allow-Origin'] = '*'
 
-            # ---> ДОБАВЛЯЕМ ПРОВЕРКУ PNA <---
-            if request.headers.get('Access-Control-Request-Private-Network') or request.headers.get('access-control-request-private-network'):
-                response.headers['Access-Control-Allow-Private-Network'] = 'true'
+            # # ---> ДОБАВЛЯЕМ ПРОВЕРКУ PNA <---
+            # if request.headers.get('Access-Control-Request-Private-Network') or request.headers.get('access-control-request-private-network'):
+            #     response.headers['Access-Control-Allow-Private-Network'] = 'true'
 
-            req_headers = request.headers.get('Access-Control-Request-Headers') or request.headers.get('access-control-request-headers')
-            if req_headers:
-                response.headers['Access-Control-Allow-Headers'] = req_headers
-            else:
-                response.headers['Access-Control-Allow-Headers'] = 'Content-Type, X-Auth-Nonce, X-Auth-Hash, X-Auth-Token, X-File-Name, Authorization'
+            # req_headers = request.headers.get('Access-Control-Request-Headers') or request.headers.get('access-control-request-headers')
+            # if req_headers:
+            #     response.headers['Access-Control-Allow-Headers'] = req_headers
+            # else:
+            #     response.headers['Access-Control-Allow-Headers'] = 'Content-Type, X-Auth-Nonce, X-Auth-Hash, X-Auth-Token, X-File-Name, Authorization'
 
-            response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
+            # response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
             response.headers['Access-Control-Expose-Headers'] = '*'
-            response.headers['Connection'] = 'close'
+            # response.headers['Connection'] = 'close'
         except Exception as e:
             log.error(f"Ошибка в set_allowed_origin_headers: {e}")
+        log.info("[TRACE EXIT] set_allowed_origin_headers (uri=%s, method=%s)", request.path, request.method)            
 
-    def set_allowed_origin_headersOld(request, response):
-        log.info("[TRACE ENTER] set_allowed_origin_headers (uri=%s, method=%s)", request.path, request.method)
-        try:
-            allowed_origin = get_allowed_origin(request)
+    # def set_allowed_origin_headersOld(request, response):
+    #     log.info("[TRACE ENTER] set_allowed_origin_headers (uri=%s, method=%s)", request.path, request.method)
+    #     try:
+    #         allowed_origin = get_allowed_origin(request)
 
-            if allowed_origin and allowed_origin != '*':
-                response.headers['Access-Control-Allow-Origin'] = allowed_origin
-                response.headers['Access-Control-Allow-Credentials'] = 'true'
-            else:
-                response.headers['Access-Control-Allow-Origin'] = '*'
+    #         if allowed_origin and allowed_origin != '*':
+    #             response.headers['Access-Control-Allow-Origin'] = allowed_origin
+    #             response.headers['Access-Control-Allow-Credentials'] = 'true'
+    #         else:
+    #             response.headers['Access-Control-Allow-Origin'] = '*'
 
-            req_headers = request.headers.get('Access-Control-Request-Headers') or request.headers.get('access-control-request-headers')
-            if req_headers:
-                response.headers['Access-Control-Allow-Headers'] = req_headers
-            else:
-                response.headers['Access-Control-Allow-Headers'] = 'Content-Type, X-Auth-Nonce, X-Auth-Hash, X-Auth-Token, X-File-Name, Authorization'
+    #         req_headers = request.headers.get('Access-Control-Request-Headers') or request.headers.get('access-control-request-headers')
+    #         if req_headers:
+    #             response.headers['Access-Control-Allow-Headers'] = req_headers
+    #         else:
+    #             response.headers['Access-Control-Allow-Headers'] = 'Content-Type, X-Auth-Nonce, X-Auth-Hash, X-Auth-Token, X-File-Name, Authorization'
 
-            response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
-            response.headers['Access-Control-Expose-Headers'] = '*'
-            response.headers['Access-Control-Allow-Private-Network'] = 'true'
-            response.headers['Connection'] = 'close'
-        except Exception as e:
-            log.error(f"Ошибка в set_allowed_origin_headers: {e}")
-        log.info("[TRACE EXIT] set_allowed_origin_headers allowed_origin=%s (uri=%s, method=%s)",
-                 allowed_origin, request.path, request.method)
+    #         response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
+    #         response.headers['Access-Control-Expose-Headers'] = '*'
+    #         response.headers['Access-Control-Allow-Private-Network'] = 'true'
+    #         response.headers['Connection'] = 'close'
+    #     except Exception as e:
+    #         log.error(f"Ошибка в set_allowed_origin_headers: {e}")
+    #     log.info("[TRACE EXIT] set_allowed_origin_headers allowed_origin=%s (uri=%s, method=%s)",
+    #              allowed_origin, request.path, request.method)
 
     @app.before_request
     async def process_before_request(request):
@@ -192,24 +204,38 @@ def init_server(config):
             res = Response('', status_code=204)            
             set_allowed_origin_headers(request, res)
             # res.headers['Access-Control-Max-Age'] = '86400'
+            log.info("[TRACE EXIT] process_before_request(uri=%s, method=%s) -> OPTIONS 204", request.path, request.method)
             return res
+        log.info("[TRACE EXIT] process_before_request(uri=%s, method=%s)", request.path, request.method)
+
+    # Чтобы плагин действительно отдавал Access-Control-Allow-Private-Network: true на OPTIONS запросы,
+    # нам нужно чуть-чуть пропатчить его ответ (так как в самом плагине нет встроенной поддержки PNA)
+    @app.after_request
+    async def add_pna_header(request, response):
+        log.info("[TRACE ENTER] after_request add_pna_header(uri=%s, method=%s)", request.path, request.method)
+        # Добавляем заголовок PNA ко всем ответам (и OPTIONS, и обычным)
+        response.headers['Access-Control-Allow-Private-Network'] = 'true'
+        log.info("[TRACE EXIT] after_request add_pna_header(uri=%s, method=%s)", request.path, request.method)
+        return response
 
     @app.after_request    
     async def cleanup_and_cors(request, response):
-        """Эквивалент Mapping("/**") для всех исходящих ответов сервера."""
+        log.info("[TRACE ENTER] after_request cleanup_and_cors(uri=%s, method=%s)", request.path, request.method)
         try:
-            set_allowed_origin_headers(request, response)        
+            set_allowed_origin_headers(request, response)    
             gc.collect()
         except Exception as e:
             log.error(f"Ошибка в cleanup_and_cors: {e}")
+
+        log.info("[TRACE EXIT] after_request cleanup_and_cors(uri=%s, method=%s)", request.path, request.method)
         return response
 
     @app.errorhandler(413)
     async def payload_too_large(request):
-        log.info("[TRACE ENTER] payload_too_large")
+        log.info("[TRACE ENTER] payload_too_large(uri=%s, method=%s)", request.path, request.method)
         log.error(f"Превышен лимит размера файла {max_size} байт")
         res = f'Ошибка: Файл превышает максимальный размер ({max_size // (1024*1024)} МБ)!', 413
-        log.info("[TRACE EXIT] payload_too_large")
+        log.info("[TRACE EXIT] payload_too_large(uri=%s, method=%s)", request.path, request.method)
         return res
 
     @app.errorhandler(500)
@@ -234,14 +260,14 @@ def init_server(config):
     # =========================================================================
     @app.route('/')
     async def index(request):
-        log.info("[TRACE ENTER] index()")
+        log.info("[TRACE ENTER] index(uri=%s, method=%s)", request.path, request.method)
         try:
             index_path = config.get('html_index_path', 'app/www/index.html')
             res = send_file(index_path)
         except Exception as e:
             log.error(f"Ошибка отдачи index.html: {e}")
             res = 'Internal Error', 500
-        log.info("[TRACE EXIT] index")
+        log.info("[TRACE EXIT] index(uri=%s, method=%s)", request.path, request.method)
         return res
 
     @app.route('/www/<path:path>')
@@ -257,6 +283,16 @@ def init_server(config):
             log.error(f"Ошибка доступа к статическому файлу {file_path}: {e}")
             res = 'Error', 500
         log.info("[TRACE EXIT] serve_www")
+        return res
+
+
+    @app.route('/<path:path>', methods=['OPTIONS'])
+    async def cors_options(request, path):
+        log.info(f"[TRACE ENTER] cors_options(path={path}, uri={request.path}, method={request.method})")
+        res = Response('', status_code=204)
+        set_allowed_origin_headers(request, res)
+        # res.headers['Access-Control-Max-Age'] = '86400'
+        log.info(f"[TRACE EXIT] cors_options(path={path}, uri={request.path}, method={request.method})")
         return res
 
     # =========================================================================

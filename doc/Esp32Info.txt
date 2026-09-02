@@ -40,7 +40,10 @@ mpremote cp -r :. ./backup/
 
 /************** delete file from ESP32 *******************/
 // *******************************************************************************//
+mpremote connect /dev/ttyACM0 ls
 mpremote connect /dev/ttyACM0 rm :webrepl_cfg.py
+
+mpremote connect /dev/ttyACM0 rm :/lib/microdot.py
 
 
 // ####################################################################################//
