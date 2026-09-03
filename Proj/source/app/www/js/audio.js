@@ -8,6 +8,7 @@
 
 let currentAudioUrl = null;
 let convertedWavBlob = null;
+let originalAudioBuffer = null; // Хранение исходного буфера для многократной обрезки
 
 // Целевые параметры WAV-файла для ESP32: пониженная частота дискретизации
 // и моно-звук уменьшают размер файла и нагрузку на I2S/DMA при воспроизведении.
@@ -24,6 +25,7 @@ function clearAudioState() {
         currentAudioUrl = null;
     }
     convertedWavBlob = null;
+    originalAudioBuffer = null;
 }
 
 /**
@@ -119,19 +121,19 @@ async function handleFileSelect(event) {
     console.log("[TRACE ENTER] handleFileSelect", event.target.files[0] ? event.target.files[0].name : "No file");
     const file = event.target.files[0];
     const previewContainer = document.getElementById('audioPreviewContainer');
-    const audioPreview = document.getElementById('audioPreview');
+    const cropContainer = document.getElementById('cropContainer');
     const status = document.getElementById('status');
-    const previewLabel = document.getElementById('previewLabel');
 
     clearAudioState();
 
     if (!file) {
         if (previewContainer) previewContainer.style.display = 'none';
+        if (cropContainer) cropContainer.style.display = 'none';
         console.log("[TRACE EXIT] handleFileSelect (file cleared)");
         return;
     }
 
-    setStatusLoading(status, 'Декодирование и ресемплинг файла (32000 Гц, моно)...');
+    setStatusLoading(status, 'Декодирование файла...');
     // На время конвертации блокируем повторный выбор файла, чтобы не запустить
     // два параллельных декодирования одного и того же input'а.
     event.target.disabled = true;
@@ -141,18 +143,103 @@ async function handleFileSelect(event) {
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
 
+        // Сохраняем оригинал для возможности повторной обрезки без передекодирования
+        originalAudioBuffer = audioBuffer;
+
+        // Инициализируем UI обрезки
+        if (cropContainer) {
+            cropContainer.style.display = 'block';
+            const duration = audioBuffer.duration;
+            const startInput = document.getElementById('cropStart');
+            const endInput = document.getElementById('cropEnd');
+            startInput.value = 0;
+            startInput.max = duration.toFixed(2);
+            endInput.value = duration.toFixed(2);
+            endInput.max = duration.toFixed(2);
+        }
+
+        // Выполняем обрезку и ресемплинг по умолчанию (весь файл)
+        await applyCrop();
+        console.log("[TRACE EXIT] handleFileSelect -> Decode completed successfully");
+    } catch (e) {
+        console.error("[TRACE EXIT] handleFileSelect -> Error", e);
+        setStatusMessage(status, `❌ Ошибка чтения аудио: ${e.message}`, 'error');
+        if (previewContainer) previewContainer.style.display = 'none';
+        if (cropContainer) cropContainer.style.display = 'none';
+    } finally {
+        event.target.disabled = false;
+    }
+}
+
+async function applyCrop() {
+    console.log("[TRACE ENTER] applyCrop");
+    const status = document.getElementById('status');
+    const previewContainer = document.getElementById('audioPreviewContainer');
+    const audioPreview = document.getElementById('audioPreview');
+    const previewLabel = document.getElementById('previewLabel');
+    const cropBtn = document.getElementById('cropBtn');
+
+    if (!originalAudioBuffer) {
+        console.warn("[TRACE EXIT] applyCrop -> no originalAudioBuffer");
+        return;
+    }
+
+    if (cropBtn) cropBtn.disabled = true;
+    setStatusLoading(status, 'Обрезка и ресемплинг файла (32000 Гц, моно)...');
+
+    let start = parseFloat(document.getElementById('cropStart').value) || 0;
+    let end = parseFloat(document.getElementById('cropEnd').value) || originalAudioBuffer.duration;
+
+    if (start < 0) start = 0;
+    if (end > originalAudioBuffer.duration) end = originalAudioBuffer.duration;
+    
+    if (start >= end) {
+        setStatusMessage(status, '❌ Начало отрезка должно быть раньше конца', 'error');
+        if (cropBtn) cropBtn.disabled = false;
+        console.warn("[TRACE EXIT] applyCrop -> invalid range");
+        return;
+    }
+
+    try {
+        const sampleRate = originalAudioBuffer.sampleRate;
+        const channels = originalAudioBuffer.numberOfChannels;
+        const startOffset = Math.floor(start * sampleRate);
+        const endOffset = Math.floor(end * sampleRate);
+        const frameCount = endOffset - startOffset;
+
+        if (frameCount <= 0) {
+            throw new Error("Длина выбранного отрезка слишком мала");
+        }
+
+        // Создаем новый AudioBuffer для нужного отрезка
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const croppedBuffer = audioCtx.createBuffer(channels, frameCount, sampleRate);
+
+        for (let i = 0; i < channels; i++) {
+            const channelData = originalAudioBuffer.getChannelData(i);
+            const croppedData = croppedBuffer.getChannelData(i);
+            for (let j = 0; j < frameCount; j++) {
+                croppedData[j] = channelData[startOffset + j];
+            }
+        }
+
         const maxBytes = savedMaxFileBytes > 0 ? savedMaxFileBytes : 4194304;
-        convertedWavBlob = await audioBufferToWavBlob(audioBuffer, maxBytes);
+        
+        // Передаем обрезанный кусок на ресемплинг и кодировку в WAV
+        convertedWavBlob = await audioBufferToWavBlob(croppedBuffer, maxBytes);
+        
         if (!convertedWavBlob) {
             throw new Error("Не удалось сформировать WAV-файл");
         }
 
         const sizeMB = (convertedWavBlob.size / (1024 * 1024)).toFixed(2);
-        // Итоговый WAV всегда TARGET_SAMPLE_RATE Гц / TARGET_CHANNELS каналов,
-        // поэтому длительность считаем по целевым параметрам, а не по исходному файлу.
         const durationSec = (convertedWavBlob.size / (TARGET_SAMPLE_RATE * TARGET_CHANNELS * 2)).toFixed(1);
 
+        if (currentAudioUrl) {
+            URL.revokeObjectURL(currentAudioUrl);
+        }
         currentAudioUrl = URL.createObjectURL(convertedWavBlob);
+        
         if (audioPreview && previewContainer) {
             audioPreview.src = currentAudioUrl;
             previewContainer.style.display = 'block';
@@ -163,14 +250,12 @@ async function handleFileSelect(event) {
         }
 
         setStatusMessage(status, `✅ Конвертировано в WAV (${durationSec} сек, ${sizeMB} МБ)`, 'success');
-        console.log("[TRACE EXIT] handleFileSelect -> Conversion completed successfully");
-
+        console.log("[TRACE EXIT] applyCrop -> Success");
     } catch (e) {
-        console.error("[TRACE EXIT] handleFileSelect -> Error", e);
-        setStatusMessage(status, `❌ Ошибка конвертации аудио: ${e.message}`, 'error');
-        if (previewContainer) previewContainer.style.display = 'none';
+        console.error("[TRACE EXIT] applyCrop -> Error", e);
+        setStatusMessage(status, `❌ Ошибка обрезки: ${e.message}`, 'error');
     } finally {
-        event.target.disabled = false;
+        if (cropBtn) cropBtn.disabled = false;
     }
 }
 
