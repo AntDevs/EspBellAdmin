@@ -19,11 +19,12 @@
 <!-- НОВЫЙ БЛОК: Выбор отрезка аудио -->
 <div class="form-group" id="cropContainer" style="display: none; border: 1px solid var(--color-border-light); padding: 12px; border-radius: var(--radius-md); background-color: var(--color-surface-subtle);">
     <label style="margin-bottom: 8px;">Выбор отрезка (в секундах):</label>
-    <div style="display: flex; gap: 8px; align-items: center;">
-        <input type="number" id="cropStart" min="0" step="0.1" placeholder="Начало">
+    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+        <input type="number" id="cropStart" min="0" step="0.1" placeholder="Начало" style="flex: 1; min-width: 80px;">
         <span style="color: var(--color-muted); font-weight: bold;">—</span>
-        <input type="number" id="cropEnd" min="0" step="0.1" placeholder="Конец">
+        <input type="number" id="cropEnd" min="0" step="0.1" placeholder="Конец" style="flex: 1; min-width: 80px;">
         <button type="button" id="cropBtn" onclick="applyCrop()" style="width: auto; padding: 11px 16px; margin: 0; flex-shrink: 0;">Обрезать</button>
+        <button type="button" id="resetCropBtn" onclick="resetCrop()" class="btn-secondary" style="width: auto; padding: 11px 16px; margin: 0; flex-shrink: 0; background-color: var(--color-secondary);">Сбросить</button>
     </div>
 </div>
 

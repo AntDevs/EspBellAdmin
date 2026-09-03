@@ -178,6 +178,7 @@ async function applyCrop() {
     const audioPreview = document.getElementById('audioPreview');
     const previewLabel = document.getElementById('previewLabel');
     const cropBtn = document.getElementById('cropBtn');
+    const resetCropBtn = document.getElementById('resetCropBtn');
 
     if (!originalAudioBuffer) {
         console.warn("[TRACE EXIT] applyCrop -> no originalAudioBuffer");
@@ -185,6 +186,7 @@ async function applyCrop() {
     }
 
     if (cropBtn) cropBtn.disabled = true;
+    if (resetCropBtn) resetCropBtn.disabled = true;
     setStatusLoading(status, 'Обрезка и ресемплинг файла (32000 Гц, моно)...');
 
     let start = parseFloat(document.getElementById('cropStart').value) || 0;
@@ -196,6 +198,7 @@ async function applyCrop() {
     if (start >= end) {
         setStatusMessage(status, '❌ Начало отрезка должно быть раньше конца', 'error');
         if (cropBtn) cropBtn.disabled = false;
+        if (resetCropBtn) resetCropBtn.disabled = false;
         console.warn("[TRACE EXIT] applyCrop -> invalid range");
         return;
     }
@@ -256,7 +259,29 @@ async function applyCrop() {
         setStatusMessage(status, `❌ Ошибка обрезки: ${e.message}`, 'error');
     } finally {
         if (cropBtn) cropBtn.disabled = false;
+        if (resetCropBtn) resetCropBtn.disabled = false;
     }
+}
+
+async function resetCrop() {
+    console.log("[TRACE ENTER] resetCrop");
+    if (!originalAudioBuffer) {
+        console.warn("[TRACE EXIT] resetCrop -> no originalAudioBuffer");
+        return;
+    }
+    
+    // Сбрасываем значения инпутов
+    const startInput = document.getElementById('cropStart');
+    const endInput = document.getElementById('cropEnd');
+    if (startInput && endInput) {
+        startInput.value = 0;
+        endInput.value = originalAudioBuffer.duration.toFixed(2);
+    }
+    
+    // Применяем сброс (перегенерируем аудио)
+    await applyCrop();
+    
+    console.log("[TRACE EXIT] resetCrop -> Success");
 }
 
 async function startUpload() {
