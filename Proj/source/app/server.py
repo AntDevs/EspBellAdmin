@@ -275,6 +275,27 @@ def init_server(config):
         log.info("[TRACE EXIT] api_wifi_scan")
         return res
 
+    @app.route('/api/trigger-bell', methods=['GET', 'OPTIONS'])
+    async def api_trigger_bell(request):
+        log.info("[TRACE ENTER] api_trigger_bell()")
+        try:
+            media_dir = config.get('media_dir', '/media')
+            target = config.get('target_filename', 'bell.wav')
+            filepath = f"{media_dir}/{target}"
+            
+            try:
+                os.stat(filepath)
+            except OSError:
+                log.info("[TRACE EXIT] trigger_bell -> 404 File Not Found")
+                return {'error': 'Файл bell.wav не найден во Flash-памяти!'}, 404, {'Content-Type': 'application/json'}
+
+            asyncio.create_task(player.play(filepath))
+            log.info("[TRACE EXIT] trigger_bell -> 200 OK")
+            return {'status': 'triggered', 'message': 'Doorbell ringing'}, 200, {'Content-Type': 'application/json'}
+        except Exception as e:
+            log.error(f"Ошибка вызова звонка: {e}")
+            return {'error': str(e)}, 500, {'Content-Type': 'application/json'}
+
     @app.route('/api/trigger-bell', methods=['POST', 'OPTIONS'])
     async def api_trigger_bell(request):
         log.info("[TRACE ENTER] api_trigger_bell()")
@@ -654,103 +675,6 @@ def init_server(config):
             log.error("Сбой сокета при потоковой записи: %s", e)
             clear_media()
             return Response(f'Ошибка записи файла: {e}', status_code=500, headers=CORS_HEADERS)
-
-    @app.route('/upload-old', methods=['POST', 'OPTIONS'])
-    async def upload_old(request):
-        log.info("[TRACE ENTER] upload()")
-
-        content_length = getattr(request, 'content_length', 0) or 0
-        if not content_length:
-            try:
-                content_length = int(request.headers.get('content-length', 0) or request.headers.get('Content-Length', 0))
-            except (ValueError, TypeError):
-                content_length = 0
-
-        log.info("Ожидаемый размер загрузки: %s байт", content_length)
-
-        required_password = config.get('upload_password', '')
-        is_auth_ok, auth_msg = security.verify_upload_auth(request, required_password)
-
-        if not is_auth_ok:
-            log.warning(f"Ошибка авторизации загрузки: {auth_msg}")
-            log.info("[TRACE EXIT] upload -> 401 Unauthorized")
-            return f"Ошибка авторизации: {auth_msg}", 401
-
-        original_filename = request.headers.get('X-File-Name', '')
-        if not original_filename and 'filename' in request.args:
-            original_filename = request.args.get('filename', '')
-
-        allowed_exts = [ext.lower().lstrip('.') for ext in config.get('allowed_extensions', ['mp3', 'wav'])]
-
-        if original_filename:
-            file_ext = original_filename.split('.')[-1].lower() if '.' in original_filename else ''
-            if file_ext not in allowed_exts:
-                log.error(f"Запрещенный тип файла: .{file_ext}")
-                log.info("[TRACE EXIT] upload -> 400 Extension forbidden")
-                return f"Ошибка: Запрещенный тип файла (разрешены: {', '.join(allowed_exts)})!", 400
-
-        content_length = int(request.headers.get('Content-Length', 0))
-        
-        if content_length > max_size:
-            log.error(f"Заявленный размер {content_length} B > {max_size} B")
-            log.info("[TRACE EXIT] upload -> 400 File too large")
-            return f'Ошибка: Файл превышает разрешенный лимит {max_size // (1024*1024)} МБ!', 400
-
-        clear_media()
-        free_bytes = get_free_space()
-
-        if content_length > free_bytes:
-            log.error(f"Недостаточно места на диске ({content_length} B > {free_bytes} B)")
-            log.info("[TRACE EXIT] upload -> 400 Out of disk space")
-            return 'Ошибка: Недостаточно места на диске!', 400
-
-        media_dir = config.get('media_dir', '/media')
-        target_filename = config.get('target_filename', 'bell.wav')
-        filepath = f"{media_dir}/{target_filename}"
-        log.info(f"Запись потока в {filepath} ({content_length} B)...")
-
-        remaining = content_length
-        chunk_size = 4096
-        saved_bytes = 0
-
-        try:
-            with open(filepath, 'wb') as f:
-                while remaining > 0:
-                    to_read = min(chunk_size, remaining)
-                    chunk = await request.stream.read(to_read)
-                    if not chunk:
-                        log.warning(f"Поток прерван на {saved_bytes} B")
-                        break
-                    
-                    if isinstance(chunk, str):
-                        chunk = chunk.encode('latin-1')
-
-                    f.write(chunk)
-                    saved_bytes += len(chunk)
-                    remaining -= len(chunk)
-                    await asyncio.sleep_ms(1)
-
-            config['last_play_pos_bytes'] = 0
-            config['last_play_pos_sec'] = 0
-            try:
-                with open('config.json', 'r') as fr:
-                    raw_content = fr.read()
-                raw_content = re.sub(r'"last_play_pos_bytes"\s*:\s*\d+', '"last_play_pos_bytes": 0', raw_content)
-                raw_content = re.sub(r'"last_play_pos_sec"\s*:\s*\d+(\.\d+)?', '"last_play_pos_sec": 0', raw_content)
-                with open('config.json', 'w') as fw:
-                    fw.write(raw_content)
-            except Exception:
-                pass
-
-            log.info(f"Файл успешно сохранен ({saved_bytes} B) в {filepath}")
-            log.info("[TRACE EXIT] upload -> 200 OK")
-            return f'Файл успешно сохранен как {target_filename}!', 200
-
-        except OSError as e:
-            log.error(f"Сбой передачи сокета: {e}")
-            clear_media()
-            log.info("[TRACE EXIT] upload -> 500 Network error")
-            return 'Ошибка передачи файла', 500
 
     @app.route('/<path:path>')
     async def catch_all(request, path):

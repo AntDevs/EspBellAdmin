@@ -46,10 +46,13 @@ def main():
     loop = asyncio.get_event_loop()
     loop.set_exception_handler(handle_async_exception)
 
-    # 1. Единый запуск аппаратной задачи автоотключения (не зависит от asyncio)
-    timeout_sec = config.get('smart_timeout_sec', 7)
-    power_mgr.set_config(config)
-    power_mgr.start_hardware_timeout(mode, timeout_sec=timeout_sec)
+    # 1. Запуск аппаратной задачи автоотключения (пропускается в режиме standby)
+    if config.get('boot_mode') == 'standby':
+        log.info("Режим standby активен: автоматическое выключение и тайм-ауты отключены.")
+    else:
+        timeout_sec = config.get('smart_timeout_sec', 7)
+        power_mgr.set_config(config)
+        power_mgr.start_hardware_timeout(mode, timeout_sec=timeout_sec)
 
     # 2. Единый запуск фоновой задачи управления светодиодом WS2812
     loop.create_task(start_led_loop(config))

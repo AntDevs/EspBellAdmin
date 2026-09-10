@@ -5,11 +5,11 @@ import uasyncio as asyncio
 
 log = logging.getLogger("INDICATOR")
 
-# Глобальное состояние режима индикации ("police", "moonlight", "off")
+# Глобальное состояние режима индикации ("police", "moonlight", "standby", "off")
 _current_mode = "police"
 
 def set_led_color(r, g, b, pin_num=48):
-    """Установка цвета встроенного адресованного светодиода WS2812 (NeoPixel)."""
+    """Установка цвета встроенного адресованного светодиода WS2812 (NeoPixel)[cite: 13]."""
     log.info("[TRACE ENTER] set_led_color(r=%s, g=%s, b=%s, pin=%s)", r, g, b, pin_num)
     try:
         pin = machine.Pin(pin_num, machine.Pin.OUT)
@@ -22,7 +22,7 @@ def set_led_color(r, g, b, pin_num=48):
     log.info("[TRACE EXIT] set_led_color")
 
 def set_moonlight_color(pin_num=48):
-    """Установка мягкого голубого лунного цвета (Moonlight Blue)."""
+    """Установка мягкого голубого лунного цвета (Moonlight Blue)[cite: 13]."""
     log.info("[TRACE ENTER] set_moonlight_color(pin_num=%s)", pin_num)
     try:
         set_led_color(0, 45, 90, pin_num=pin_num)
@@ -31,8 +31,18 @@ def set_moonlight_color(pin_num=48):
         log.warning(f"Ошибка установки лунного цвета: {e}")
     log.info("[TRACE EXIT] set_moonlight_color")
 
+def set_green_color(pin_num=48):
+    """Установка зеленого цвета для режима standby."""
+    log.info("[TRACE ENTER] set_green_color(pin_num=%s)", pin_num)
+    try:
+        set_led_color(0, 90, 0, pin_num=pin_num)
+        log.info("Установлен зеленый цвет индикатора для режима standby.")
+    except Exception as e:
+        log.warning(f"Ошибка установки зеленого цвета: {e}")
+    log.info("[TRACE EXIT] set_green_color")
+
 def set_led_mode(mode):
-    """Переключение глобального состояния светодиодной индикации."""
+    """Переключение глобального состояния светодиодной индикации[cite: 13]."""
     global _current_mode
     log.info("[TRACE ENTER] set_led_mode(mode=%s)", mode)
     try:
@@ -44,12 +54,17 @@ def set_led_mode(mode):
 
 async def start_led_loop(config):
     """
-    Фоновый асинхронный цикл управления светодиодом.
-    Динамически отрабатывает текущий режим без создания дублирующих задач.
-    Использует конфигурацию для настройки задержек и пина.
+    Фоновый асинхронный цикл управления светодиодом[cite: 13].
+    Динамически отрабатывает текущий режим без создания дублирующих задач[cite: 13].
+    Использует конфигурацию для настройки задержек и пина[cite: 13].
     """
     global _current_mode
     pin_num = config.get('led_pin', 48)
+    
+    # Автоматический выбор режима standby при загрузке с соответствующим boot_mode
+    if config.get('boot_mode') == 'standby' and _current_mode == 'police':
+        _current_mode = 'standby'
+
     log.info("[TRACE ENTER] start_led_loop(pin_num=%s)", pin_num)
     
     strobe_ms = config.get('led_strobe_ms', 80)
@@ -62,7 +77,7 @@ async def start_led_loop(config):
 
         while True:
             if _current_mode == "police":
-                # Серия вспышек красного стробоскопа
+                # Серия вспышек красного стробоскопа[cite: 13]
                 np[0] = (255, 0, 0)
                 np.write()
                 await asyncio.sleep_ms(strobe_ms)
@@ -79,7 +94,7 @@ async def start_led_loop(config):
                 if _current_mode != "police":
                     continue
 
-                # Серия вспышек синего стробоскопа
+                # Серия вспышек синего стробоскопа[cite: 13]
                 np[0] = (0, 0, 255)
                 np.write()
                 await asyncio.sleep_ms(strobe_ms)
@@ -94,8 +109,14 @@ async def start_led_loop(config):
                 await asyncio.sleep_ms(strobe_long * 2)
 
             elif _current_mode == "moonlight":
-                # Небесно-голубой постоянный цвет (soft pale cyan-blue)
+                # Небесно-голубой постоянный цвет (soft pale cyan-blue)[cite: 13]
                 np[0] = (0, 45, 90)
+                np.write()
+                await asyncio.sleep(1)
+
+            elif _current_mode == "standby":
+                # Зеленый постоянный цвет для режима standby
+                np[0] = (0, 90, 0)
                 np.write()
                 await asyncio.sleep(1)
 
@@ -105,7 +126,7 @@ async def start_led_loop(config):
                 await asyncio.sleep(1)
 
     except asyncio.CancelledError:
-        log.info("[INDICATOR] Задача управления LED отменена.")
+        log.info("[INDICATOR] Задача управления LED отменена.")[cite: 13]
     except Exception as e:
-        log.error(f"Сбой в работе индикатора LED: {e}")
-    log.info("[TRACE EXIT] start_led_loop")
+        log.error(f"Сбой в работе индикатора LED: {e}")[cite: 13]
+    log.info("[TRACE EXIT] start_led_loop")[cite: 13]

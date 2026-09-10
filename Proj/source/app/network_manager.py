@@ -66,7 +66,7 @@ def find_best_network(sta, wifi_networks):
         raw_sta_pass = net.get('password', '')
         log.info(f"В конфигурации задана единственная сеть '{sta_ssid}'. Подключение без поиска...")
         sta_pass = security_mgr.decrypt_str(raw_sta_pass) if str(raw_sta_pass).startswith("ENC:") else raw_sta_pass
-        log.info("[Exit] find_best_network выбора оптимальной Wi-Fi сети: %s", sta_ssid)
+        log.info("[Exit] find_best_network выбора оптимальной Wi-Fi сети: %s, p: %s", sta_ssid, sta_pass)
         return sta_ssid, sta_pass
     
     # scanned_nets = sta.scan()
@@ -84,7 +84,7 @@ def find_best_network(sta, wifi_networks):
             raw_sta_pass = match.get('password', '')
             log.info(f"find_best_network Найдена сеть: '{sta_ssid}'. Попытка подключения...")
             sta_pass = security_mgr.decrypt_str(raw_sta_pass) if str(raw_sta_pass).startswith("ENC:") else raw_sta_pass
-            log.info("[Exit] find_best_network выбора оптимальной Wi-Fi сети: %s", sta_ssid)
+            log.info("[Exit] find_best_network выбора оптимальной Wi-Fi сети: %s, p: %s", sta_ssid, sta_pass)
             return sta_ssid, sta_pass
             
     log.warning("[Exit] find_best_network Не удалось найти известные сети в радиусе действия.")
