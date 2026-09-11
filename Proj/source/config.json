@@ -1,6 +1,6 @@
 {
   // Режим загрузки: "music_first/standby" (сначала проигрывается звук) или "default" (обычный запуск)
-  "boot_mode": "standby",
+  "boot_mode": "music_first",
 
   "boot_mode_list": ["music_first", "standby", "default"],
 
@@ -74,7 +74,7 @@
   "server_host": "0.0.0.0",
 
   // Порт веб-сервера (443 для HTTPS, 80 для HTTP)
-  "server_port": 443,
+  "server_port": 80,
 
   "i2s_bck_pin": 15,
   "i2s_ws_pin": 16,

@@ -55,7 +55,18 @@ mpremote connect /dev/ttyACM0 rm :/lib/microdot.py
 // =============================        Start ESP32 Utils   ============================//
 // =====================================================================================//
 
+// 3.4.0; MicroPython v1.30.0-preview.8.gf668077be2.dirty on 2026-08-28
+// check MicroPython vertssion
+import sys
+print(sys.version)
+
+// системную информацию (платформу, версию прошивки и аппаратную часть)
+import os
+print(os.uname())
+
 picocom /dev/ttyACM0 -b 115200
+
+picocom -b 115200 /dev/tty
 
 mpremote connect /dev/ttyACM0 repl
 
@@ -219,3 +230,15 @@ def print_tree(path='/', prefix=''):
 print('/')
 print_tree('/')
 "
+
+
+// =====================================================================================//
+// =============================        Start ESP32 mpy-cross   ============================//
+// =====================================================================================//
+
+cd /media/topasta/Dev/git/EspBellAdmin/Proj/source
+find . -name "*.py" -exec /media/topasta/Dev/ESP32/firmware/cust_gen/esp_micropython/micropython/mpy-cross/mpy-cross -O2 {} \;
+
+// ####################################################################################//
+// ############################# END ESP32 mpy-cross #######################//
+// ####################################################################################//

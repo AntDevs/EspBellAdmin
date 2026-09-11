@@ -73,6 +73,12 @@ class PowerManager:
         """Единый метод обновления таймаута и режима индикации."""
         log.info("[TRACE ENTER] PowerManager.set_timeout(timeout_sec=%s)", timeout_sec)
         try:
+            # Игнорируем установку тайм-аутов и смену цветов при режиме standby
+            if self.config.get('boot_mode') == 'standby':
+                log.info("Режим standby активен: изменение таймаута и цвета индикатора игнорируется.")
+                log.info("[TRACE EXIT] PowerManager.set_timeout")
+                return
+
             self.current_timeout_sec = int(timeout_sec)
             self.notify_activity()
 
@@ -86,6 +92,7 @@ class PowerManager:
         except Exception as exc:
             self._log_traceback("Ошибка установки нового таймаута", exc)
         log.info("[TRACE EXIT] PowerManager.set_timeout")
+
 
 # anton 2
     # def hold_power(self):

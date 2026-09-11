@@ -130,6 +130,18 @@ def init_server(config):
                 response.headers['Access-Control-Allow-Origin'] = '*'
 
             response.headers['Access-Control-Expose-Headers'] = '*'
+            
+            # ДОБАВЛЕНО ДЛЯ РЕШЕНИЯ ПРОБЛЕМЫ CORS POST/OPTIONS:
+            # Обязательно разрешаем методы и заголовки, чтобы браузер пропускал preflight
+            response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS, PUT, DELETE'
+            
+            # Эхо запрашиваемых браузером заголовков (Access-Control-Request-Headers)
+            req_headers = request.headers.get('Access-Control-Request-Headers')
+            if req_headers:
+                response.headers['Access-Control-Allow-Headers'] = req_headers
+            else:
+                response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Auth-Hash, X-Auth-Nonce, X-Auth-Token, X-File-Name'
+                
         except Exception as e:
             log.error(f"Ошибка в set_allowed_origin_headers: {e}")
         log.info("[TRACE EXIT] set_allowed_origin_headers (uri=%s, method=%s)", request.path, request.method)           
@@ -161,8 +173,9 @@ def init_server(config):
     async def cleanup_and_cors(request, response):
         log.info("[TRACE ENTER] cleanup_and_cors(uri=%s, method=%s)", request.path, request.method)
         try:
+            response.headers['Connection'] = 'close'
             set_allowed_origin_headers(request, response)    
-            # gc.collect()
+            gc.collect()
         except Exception as e:
             log.error(f"Ошибка в cleanup_and_cors: {e}")
 
@@ -505,16 +518,16 @@ def init_server(config):
         log.info("[TRACE EXIT] get_nonce")
         return res
 
-    @app.route('/api/verify-auth', methods=['OPTIONS'])
-    async def verify_auth_options(request):
-        """Переключение в авторизованный режим: таймаут 600 сек."""
-        log.info("[TRACE ENTER] verify_auth() OPTIONS")
-        return Response('', 204)
-
-    @app.route('/api/verify-auth', methods=['POST'])
+    @app.route('/api/verify-auth', methods=['POST', 'OPTIONS'])
     async def verify_auth(request):
         """Переключение в авторизованный режим: таймаут 600 сек."""
-        log.info("[TRACE ENTER] verify_auth() POST")
+        log.info("[TRACE ENTER] verify_auth(uri=%s, method=%s)", request.path, request.method)        
+        if request.method == 'OPTIONS':
+            res = Response('', status_code=204)
+            set_allowed_origin_headers(request, res)
+            log.info("[TRACE EXIT] verify_auth OPTIONS -> 204")
+            return res
+
         required_password = config.get('upload_password', '')
         is_auth_ok, auth_msg = security.verify_upload_auth(request, required_password)
         if is_auth_ok:
@@ -562,10 +575,16 @@ def init_server(config):
         if allowed_origin and allowed_origin != '*':
             CORS_HEADERS = {
                 'Access-Control-Allow-Origin': allowed_origin,
-                'Access-Control-Allow-Credentials': 'true'
+                'Access-Control-Allow-Credentials': 'true',
+                'Access-Control-Allow-Methods': 'GET, POST, OPTIONS, PUT, DELETE',
+                'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Auth-Hash, X-Auth-Nonce, X-Auth-Token, X-File-Name'
             }
         else:
-            CORS_HEADERS = {'Access-Control-Allow-Origin': '*'}
+            CORS_HEADERS = {
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'GET, POST, OPTIONS, PUT, DELETE',
+                'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Auth-Hash, X-Auth-Nonce, X-Auth-Token, X-File-Name'
+            }
 
         content_length = getattr(request, 'content_length', 0) or 0
         if not content_length:
