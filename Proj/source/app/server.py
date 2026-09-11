@@ -159,14 +159,14 @@ def init_server(config):
 
     @app.after_request    
     async def cleanup_and_cors(request, response):
-        log.info("[TRACE ENTER] after_request cleanup_and_cors(uri=%s, method=%s)", request.path, request.method)
+        log.info("[TRACE ENTER] cleanup_and_cors(uri=%s, method=%s)", request.path, request.method)
         try:
             set_allowed_origin_headers(request, response)    
-            gc.collect()
+            # gc.collect()
         except Exception as e:
             log.error(f"Ошибка в cleanup_and_cors: {e}")
 
-        log.info("[TRACE EXIT] after_request cleanup_and_cors(uri=%s, method=%s)", request.path, request.method)
+        log.info("[TRACE EXIT] cleanup_and_cors(uri=%s, method=%s)", request.path, request.method)
         return response
 
     @app.errorhandler(413)

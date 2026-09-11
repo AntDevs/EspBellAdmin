@@ -6,6 +6,7 @@ import sys
 import io
 import logging
 from app.security import SecurityManager
+from hal.indicator import set_led_mode
 
 log = logging.getLogger("NETWORK")
 
@@ -166,6 +167,10 @@ def initWifiMode(config):
 def initHotPoinMode(config):
     # Режим аварийной/стартовой точки доступа (Access Point Mode)
     log.info("[TRACE ENTER] initHotPoinMode -> AP")
+    
+    # Смена цвета на оранжевый для индикации режима AP
+    set_led_mode("hotspot")
+    
     ap = network.WLAN(network.AP_IF)
     ap.active(False)
     time.sleep(0.1)
