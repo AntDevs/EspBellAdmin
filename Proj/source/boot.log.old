@@ -1,0 +1,662 @@
+
+=================== SYSTEM BOOT / POWER ON ===================
+[2000-01-01 00:00:01.233] [INFO] [MAIN] [TRACE ENTER] main()
+[2000-01-01 00:00:01.252] [INFO] [CONFIG] [TRACE ENTER] load_config()
+[2000-01-01 00:00:01.294] [INFO] [CONFIG] Файл config.json уже загружен
+[2000-01-01 00:00:02.027] [INFO] [BOOT_AUDIO] [TRACE ENTER] run_boot_audio()
+[2000-01-01 00:00:02.042] [INFO] [BOOT_AUDIO] === [HAL] Запуск автономной стартовой аудиосистемы по питанию ===
+[2000-01-01 00:00:02.052] [INFO] [BOOT_AUDIO] [TRACE ENTER] StandaloneBootPlayer.__init__()
+[2000-01-01 00:00:02.054] [INFO] [BOOT_AUDIO] [TRACE EXIT] StandaloneBootPlayer.__init__
+[2000-01-01 00:00:02.072] [INFO] [BOOT_AUDIO] [TRACE ENTER] StandaloneBootPlayer.play(filepath=None)
+[2000-01-01 00:00:02.142] [INFO] [AUDIO_UTILS] [TRACE ENTER] play_audio_track(mode=boot, filepath=None, ibuf=16384)
+[2000-01-01 00:00:02.170] [INFO] [AUDIO_UTILS] Открытие аудиофайла /media/bell.wav [BOOT MODE]...
+[2000-01-01 00:00:02.182] [INFO] [AUDIO_UTILS] Пины I2S: BCK=15, WS=16, SD=17, ID=0
+[2000-01-01 00:00:02.192] [INFO] [AUDIO_UTILS] Параметры сессии: повторов=2, лимит=20s, fade=2000ms, resume=True, start_pos=1377684B (7.81s)
+[2000-01-01 00:00:02.202] [INFO] [AUDIO_UTILS] Запуск итерации проигрывания 1/2...
+[2000-01-01 00:00:02.222] [INFO] [AUDIO_UTILS] [TRACE ENTER] stream_wav(start_pos_bytes=1377684, start_pos_sec=7.81, max_ms=20000, fade_ms=2000)
+[2000-01-01 00:00:02.225] [INFO] [AUDIO_UTILS] [TRACE ENTER] parse_wav_header()
+[2000-01-01 00:00:02.242] [INFO] [AUDIO_UTILS] [TRACE EXIT] parse_wav_header -> channels=1, rate=32000, bits=16, data_size=2037202, data_offset=44
+[2000-01-01 00:00:02.252] [INFO] [AUDIO_UTILS] Параметры WAV: 32000 Hz, 16 bit, channels=1, data=2037202 B
+[2000-01-01 00:00:02.262] [INFO] [AUDIO_UTILS] [TRACE ENTER] init_hardware_i2s(rate=32000, bits=16, channels=2, ibuf=16384, pins=(15,16,17,0))
+[2000-01-01 00:00:02.282] [INFO] [AUDIO_UTILS] Конфигурирование I2S (Rate=32000Hz, Bits=16, Format=1, Buffer=16384B)...
+[2000-01-01 00:00:02.301] [INFO] [AUDIO_UTILS] [TRACE EXIT] init_hardware_i2s
+[2000-01-01 00:00:02.312] [INFO] [AUDIO_UTILS] Возобновление WAV с позиции 1377684 B / 7.81 сек
+[2000-01-01 00:00:12.632] [INFO] [AUDIO_UTILS] Достигнут конец PCM-данных (data_size). Завершение проигрывания.
+[2000-01-01 00:00:12.641] [INFO] [AUDIO_UTILS] [TRACE EXIT] stream_wav -> True
+[2000-01-01 00:00:12.652] [INFO] [AUDIO_UTILS] Запуск итерации проигрывания 2/2...
+[2000-01-01 00:00:12.672] [INFO] [AUDIO_UTILS] [TRACE ENTER] stream_wav(start_pos_bytes=0, start_pos_sec=0.0, max_ms=20000, fade_ms=2000)
+[2000-01-01 00:00:12.675] [INFO] [AUDIO_UTILS] [TRACE ENTER] parse_wav_header()
+[2000-01-01 00:00:12.692] [INFO] [AUDIO_UTILS] [TRACE EXIT] parse_wav_header -> channels=1, rate=32000, bits=16, data_size=2037202, data_offset=44
+[2000-01-01 00:00:12.702] [INFO] [AUDIO_UTILS] Параметры WAV: 32000 Hz, 16 bit, channels=1, data=2037202 B
+[2000-01-01 00:00:12.712] [INFO] [AUDIO_UTILS] [TRACE ENTER] init_hardware_i2s(rate=32000, bits=16, channels=2, ibuf=16384, pins=(15,16,17,0))
+[2000-01-01 00:00:12.732] [INFO] [AUDIO_UTILS] Конфигурирование I2S (Rate=32000Hz, Bits=16, Format=1, Buffer=16384B)...
+[2000-01-01 00:00:12.751] [INFO] [AUDIO_UTILS] [TRACE EXIT] init_hardware_i2s
+[2000-01-01 00:00:22.182] [INFO] [AUDIO_UTILS] Достигнут лимит времени воспроизведения (20000 ms)
+[2000-01-01 00:00:22.185] [INFO] [AUDIO_UTILS] [TRACE EXIT] stream_wav -> True
+[2000-01-01 00:00:22.202] [INFO] [AUDIO_UTILS] [TRACE ENTER] save_position_to_config(pos_bytes=602156, pos_sec=9.408)
+[2000-01-01 00:00:22.342] [INFO] [AUDIO_UTILS] Сохранена позиция воспроизведения в config.json: 602156 B (9.41 сек)
+[2000-01-01 00:00:22.345] [INFO] [AUDIO_UTILS] [TRACE EXIT] save_position_to_config
+[2000-01-01 00:00:22.375] [INFO] [AUDIO_UTILS] [TRACE ENTER] deinit_hardware_i2s()
+[2000-01-01 00:00:22.392] [INFO] [AUDIO_UTILS] [TRACE EXIT] deinit_hardware_i2s
+[2000-01-01 00:00:22.402] [INFO] [AUDIO_UTILS] Воспроизведение аудиофайла полностью завершено, I2S освобожден.
+[2000-01-01 00:00:22.412] [INFO] [AUDIO_UTILS] [TRACE EXIT] play_audio_track -> True
+[2000-01-01 00:00:22.424] [INFO] [BOOT_AUDIO] [TRACE EXIT] StandaloneBootPlayer.play -> True
+[2000-01-01 00:00:22.442] [INFO] [BOOT_AUDIO] [TRACE EXIT] run_boot_audio -> completed
+[2000-01-01 00:00:22.462] [INFO] [MAIN] Загрузка тяжелых сетевых и асинхронных модулей...
+[2000-01-01 00:00:22.672] [INFO] [SECURITY]  Entering __init__ SecurityManager(ttl_seconds=60)
+[2000-01-01 00:00:22.684] [INFO] [SECURITY]  Exiting __init__ SecurityManager: TTL for Nonce = 60 seconds
+[2000-01-01 00:00:22.821] [INFO] [POWER_MGR] [TRACE ENTER] PowerManager.__init__(pin_num=4)
+[2000-01-01 00:00:22.834] [INFO] [POWER_MGR] [TRACE EXIT] PowerManager.__init__
+[2000-01-01 00:00:24.253] [INFO] [AUDIO] [TRACE ENTER] AudioPlayer.__init__()
+[2000-01-01 00:00:24.264] [INFO] [AUDIO] [TRACE EXIT] AudioPlayer.__init__
+[2000-01-01 00:00:24.272] [INFO] [MAIN] Инициализация сетевых интерфейсов и веб-сервера Microdot...
+[2000-01-01 00:00:24.282] [INFO] [NETWORK] [TRACE ENTER] setup_network()
+[2000-01-01 00:00:24.292] [INFO] [NETWORK] Установлено сетевое имя устройства (mDNS): bell555
+[2000-01-01 00:00:25.304] [WARNING] [NETWORK] [TRACE ENTER] initWifiMode
+[2000-01-01 00:00:25.473] [INFO] [NETWORK] [Enter] find_best_network выбора оптимальной Wi-Fi сети...
+[2000-01-01 00:00:25.492] [INFO] [NETWORK] [Enter] get_network_list Сканирование Wi-Fi сети...
+[2000-01-01 00:00:28.032] [INFO] [NETWORK] get_network_list Сканирование Wi-Fi сети завершено. Найдено [(b'MyHome_555', b'4\n3d\x89\x00', 6, -48, 3, False), (b'Home555', b'\xd45\x1dQ\x154', 1, -79, 3, False), (b'BASJA8', b'\xb0\x1fG@\xe1\x0b', 1, -81, 3, False), (b'MyHomeMain', b'\xa8n\x84\x95~\xfc', 5, -82, 3, False), (b'DIRECT-BC-HP DeskJet 2800 series', b',X\xb9\xa7\xd2\xbd', 6, -88, 3, False), (b'ofir1977', b'\xb0\xbb\xe5e\xed\x04', 9, -90, 3, False)] сетей.
+[2000-01-01 00:00:28.072] [INFO] [NETWORK] [Exit] get_network_list Сканирование Wi-Fi сети: [{'rssi': -48, 'authmode': 3, 'ssid': 'MyHome_555'}, {'rssi': -79, 'authmode': 3, 'ssid': 'Home555'}, {'rssi': -81, 'authmode': 3, 'ssid': 'BASJA8'}, {'rssi': -82, 'authmode': 3, 'ssid': 'MyHomeMain'}, {'rssi': -88, 'authmode': 3, 'ssid': 'DIRECT-BC-HP DeskJet 2800 series'}, {'rssi': -90, 'authmode': 3, 'ssid': 'ofir1977'}]
+[2000-01-01 00:00:28.092] [INFO] [NETWORK] find_best_network Сканированная сеть: '{'ssid': 'MyHome_555', 'password': 'ENC:GVzJ8MGTeGtInaizDig8+w=='}' (RSSI: -48 dBm).
+
+=================== SYSTEM BOOT / POWER ON ===================
+[2000-01-01 00:00:00.923] [INFO] [MAIN] [TRACE ENTER] main()
+[2000-01-01 00:00:00.932] [INFO] [CONFIG] [TRACE ENTER] load_config()
+[2000-01-01 00:00:00.942] [INFO] [CONFIG] Файл config.json уже загружен
+[2000-01-01 00:00:01.711] [INFO] [BOOT_AUDIO] [TRACE ENTER] run_boot_audio()
+[2000-01-01 00:00:01.732] [INFO] [BOOT_AUDIO] === [HAL] Запуск автономной стартовой аудиосистемы по питанию ===
+[2000-01-01 00:00:01.735] [INFO] [BOOT_AUDIO] [TRACE ENTER] StandaloneBootPlayer.__init__()
+[2000-01-01 00:00:01.752] [INFO] [BOOT_AUDIO] [TRACE EXIT] StandaloneBootPlayer.__init__
+[2000-01-01 00:00:01.755] [INFO] [BOOT_AUDIO] [TRACE ENTER] StandaloneBootPlayer.play(filepath=None)
+[2000-01-01 00:00:01.831] [INFO] [AUDIO_UTILS] [TRACE ENTER] play_audio_track(mode=boot, filepath=None, ibuf=16384)
+[2000-01-01 00:00:01.861] [INFO] [AUDIO_UTILS] Открытие аудиофайла /media/bell.wav [BOOT MODE]...
+[2000-01-01 00:00:01.874] [INFO] [AUDIO_UTILS] Пины I2S: BCK=15, WS=16, SD=17, ID=0
+[2000-01-01 00:00:01.922] [INFO] [AUDIO_UTILS] Параметры сессии: повторов=2, лимит=20s, fade=2000ms, resume=True, start_pos=1097772B (17.15s)
+[2000-01-01 00:00:01.925] [INFO] [AUDIO_UTILS] Запуск итерации проигрывания 1/2...
+[2000-01-01 00:00:01.952] [INFO] [AUDIO_UTILS] [TRACE ENTER] stream_wav(start_pos_bytes=1097772, start_pos_sec=17.15, max_ms=20000, fade_ms=2000)
+[2000-01-01 00:00:01.955] [INFO] [AUDIO_UTILS] [TRACE ENTER] parse_wav_header()
+[2000-01-01 00:00:01.972] [INFO] [AUDIO_UTILS] [TRACE EXIT] parse_wav_header -> channels=1, rate=32000, bits=16, data_size=2037202, data_offset=44
+[2000-01-01 00:00:01.982] [INFO] [AUDIO_UTILS] Параметры WAV: 32000 Hz, 16 bit, channels=1, data=2037202 B
+[2000-01-01 00:00:01.992] [INFO] [AUDIO_UTILS] [TRACE ENTER] init_hardware_i2s(rate=32000, bits=16, channels=2, ibuf=16384, pins=(15,16,17,0))
+[2000-01-01 00:00:02.012] [INFO] [AUDIO_UTILS] Конфигурирование I2S (Rate=32000Hz, Bits=16, Format=1, Buffer=16384B)...
+[2000-01-01 00:00:02.031] [INFO] [AUDIO_UTILS] [TRACE EXIT] init_hardware_i2s
+[2000-01-01 00:00:02.042] [INFO] [AUDIO_UTILS] Возобновление WAV с позиции 1097772 B / 17.15 сек
+[2000-01-01 00:00:12.180] [INFO] [AUDIO_UTILS] [TRACE ENTER] save_position_to_config(pos_bytes=1097772, pos_sec=17.15)
+[2000-01-01 00:00:12.342] [INFO] [AUDIO_UTILS] Сохранена позиция воспроизведения в config.json: 1097772 B (17.15 сек)
+[2000-01-01 00:00:12.345] [INFO] [AUDIO_UTILS] [TRACE EXIT] save_position_to_config
+[2000-01-01 00:00:12.362] [INFO] [AUDIO_UTILS] [TRACE ENTER] deinit_hardware_i2s()
+[2000-01-01 00:00:12.364] [INFO] [AUDIO_UTILS] [TRACE EXIT] deinit_hardware_i2s
+[2000-01-01 00:00:12.382] [INFO] [AUDIO_UTILS] Воспроизведение аудиофайла полностью завершено, I2S освобожден.
+
+=================== SYSTEM BOOT / POWER ON ===================
+[2000-01-01 00:00:01.053] [INFO] [MAIN] [TRACE ENTER] main()
+[2000-01-01 00:00:01.057] [INFO] [CONFIG] [TRACE ENTER] load_config()
+[2000-01-01 00:00:01.072] [INFO] [CONFIG] Файл config.json уже загружен
+[2000-01-01 00:00:01.955] [INFO] [BOOT_AUDIO] [TRACE ENTER] run_boot_audio()
+[2000-01-01 00:00:01.972] [INFO] [BOOT_AUDIO] === [HAL] Запуск автономной стартовой аудиосистемы по питанию ===
+[2000-01-01 00:00:01.975] [INFO] [BOOT_AUDIO] [TRACE ENTER] StandaloneBootPlayer.__init__()
+[2000-01-01 00:00:01.992] [INFO] [BOOT_AUDIO] [TRACE EXIT] StandaloneBootPlayer.__init__
+[2000-01-01 00:00:01.995] [INFO] [BOOT_AUDIO] [TRACE ENTER] StandaloneBootPlayer.play(filepath=None)
+[2000-01-01 00:00:02.090] [INFO] [AUDIO_UTILS] [TRACE ENTER] play_audio_track(mode=boot, filepath=None, ibuf=16384)
+[2000-01-01 00:00:02.126] [INFO] [AUDIO_UTILS] Открытие аудиофайла /media/bell.wav [BOOT MODE]...
+[2000-01-01 00:00:02.144] [INFO] [AUDIO_UTILS] Пины I2S: BCK=15, WS=16, SD=17, ID=0
+[2000-01-01 00:00:02.162] [INFO] [AUDIO_UTILS] Параметры сессии: повторов=2, лимит=20s, fade=2000ms, resume=True, start_pos=45100B (0.7s)
+[2000-01-01 00:00:02.172] [INFO] [AUDIO_UTILS] Запуск итерации проигрывания 1/2...
+[2000-01-01 00:00:02.192] [INFO] [AUDIO_UTILS] [TRACE ENTER] stream_wav(start_pos_bytes=45100, start_pos_sec=0.7, max_ms=20000, fade_ms=2000)
+[2000-01-01 00:00:02.204] [INFO] [AUDIO_UTILS] [TRACE ENTER] parse_wav_header()
+[2000-01-01 00:00:02.222] [INFO] [AUDIO_UTILS] [TRACE EXIT] parse_wav_header -> channels=1, rate=32000, bits=16, data_size=1216000, data_offset=44
+[2000-01-01 00:00:02.232] [INFO] [AUDIO_UTILS] Параметры WAV: 32000 Hz, 16 bit, channels=1, data=1216000 B
+[2000-01-01 00:00:02.242] [INFO] [AUDIO_UTILS] [TRACE ENTER] init_hardware_i2s(rate=32000, bits=16, channels=2, ibuf=16384, pins=(15,16,17,0))
+[2000-01-01 00:00:02.262] [INFO] [AUDIO_UTILS] Конфигурирование I2S (Rate=32000Hz, Bits=16, Format=1, Buffer=16384B)...
+[2000-01-01 00:00:02.311] [INFO] [AUDIO_UTILS] [TRACE EXIT] init_hardware_i2s
+[2000-01-01 00:00:02.322] [INFO] [AUDIO_UTILS] Возобновление WAV с позиции 45100 B / 0.7 сек
+[2000-01-01 00:00:09.944] [INFO] [AUDIO_UTILS] [TRACE ENTER] save_position_to_config(pos_bytes=45100, pos_sec=0.7)
+[2000-01-01 00:00:10.112] [INFO] [AUDIO_UTILS] Сохранена позиция воспроизведения в config.json: 45100 B (0.7 сек)
+[2000-01-01 00:00:10.115] [INFO] [AUDIO_UTILS] [TRACE EXIT] save_position_to_config
+[2000-01-01 00:00:10.132] [INFO] [AUDIO_UTILS] [TRACE ENTER] deinit_hardware_i2s()
+[2000-01-01 00:00:10.135] [INFO] [AUDIO_UTILS] [TRACE EXIT] deinit_hardware_i2s
+[2000-01-01 00:00:10.152] [INFO] [AUDIO_UTILS] Воспроизведение аудиофайла полностью завершено, I2S освобожден.
+
+=================== SYSTEM BOOT / POWER ON ===================
+[2000-01-01 00:00:01.073] [INFO] [MAIN] [TRACE ENTER] main()
+[2000-01-01 00:00:01.077] [INFO] [CONFIG] [TRACE ENTER] load_config()
+[2000-01-01 00:00:01.092] [INFO] [CONFIG] Файл config.json уже загружен
+[2000-01-01 00:00:01.996] [INFO] [BOOT_AUDIO] [TRACE ENTER] run_boot_audio()
+[2000-01-01 00:00:02.012] [INFO] [BOOT_AUDIO] === [HAL] Запуск автономной стартовой аудиосистемы по питанию ===
+[2000-01-01 00:00:02.015] [INFO] [BOOT_AUDIO] [TRACE ENTER] StandaloneBootPlayer.__init__()
+[2000-01-01 00:00:02.032] [INFO] [BOOT_AUDIO] [TRACE EXIT] StandaloneBootPlayer.__init__
+[2000-01-01 00:00:02.042] [INFO] [BOOT_AUDIO] [TRACE ENTER] StandaloneBootPlayer.play(filepath=None)
+[2000-01-01 00:00:02.141] [INFO] [AUDIO_UTILS] [TRACE ENTER] play_audio_track(mode=boot, filepath=None, ibuf=16384)
+[2000-01-01 00:00:02.177] [INFO] [AUDIO_UTILS] Открытие аудиофайла /media/bell.wav [BOOT MODE]...
+[2000-01-01 00:00:02.194] [INFO] [AUDIO_UTILS] Пины I2S: BCK=15, WS=16, SD=17, ID=0
+[2000-01-01 00:00:02.212] [INFO] [AUDIO_UTILS] Параметры сессии: повторов=2, лимит=20s, fade=2000ms, resume=True, start_pos=602156B (9.41s)
+[2000-01-01 00:00:02.222] [INFO] [AUDIO_UTILS] Запуск итерации проигрывания 1/2...
+[2000-01-01 00:00:02.252] [INFO] [AUDIO_UTILS] [TRACE ENTER] stream_wav(start_pos_bytes=602156, start_pos_sec=9.41, max_ms=20000, fade_ms=2000)
+[2000-01-01 00:00:02.255] [INFO] [AUDIO_UTILS] [TRACE ENTER] parse_wav_header()
+[2000-01-01 00:00:02.272] [INFO] [AUDIO_UTILS] [TRACE EXIT] parse_wav_header -> channels=1, rate=32000, bits=16, data_size=1216000, data_offset=44
+[2000-01-01 00:00:02.282] [INFO] [AUDIO_UTILS] Параметры WAV: 32000 Hz, 16 bit, channels=1, data=1216000 B
+[2000-01-01 00:00:02.292] [INFO] [AUDIO_UTILS] [TRACE ENTER] init_hardware_i2s(rate=32000, bits=16, channels=2, ibuf=16384, pins=(15,16,17,0))
+[2000-01-01 00:00:02.302] [INFO] [AUDIO_UTILS] Конфигурирование I2S (Rate=32000Hz, Bits=16, Format=1, Buffer=16384B)...
+[2000-01-01 00:00:02.321] [INFO] [AUDIO_UTILS] [TRACE EXIT] init_hardware_i2s
+[2000-01-01 00:00:02.332] [INFO] [AUDIO_UTILS] Возобновление WAV с позиции 602156 B / 9.41 сек
+[2000-01-01 00:00:11.932] [INFO] [AUDIO_UTILS] Достигнут конец PCM-данных (data_size). Завершение проигрывания.
+[2000-01-01 00:00:11.935] [INFO] [AUDIO_UTILS] [TRACE EXIT] stream_wav -> True
+[2000-01-01 00:00:11.952] [INFO] [AUDIO_UTILS] Запуск итерации проигрывания 2/2...
+[2000-01-01 00:00:11.982] [INFO] [AUDIO_UTILS] [TRACE ENTER] stream_wav(start_pos_bytes=0, start_pos_sec=0.0, max_ms=20000, fade_ms=2000)
+[2000-01-01 00:00:11.984] [INFO] [AUDIO_UTILS] [TRACE ENTER] parse_wav_header()
+[2000-01-01 00:00:12.002] [INFO] [AUDIO_UTILS] [TRACE EXIT] parse_wav_header -> channels=1, rate=32000, bits=16, data_size=1216000, data_offset=44
+[2000-01-01 00:00:12.012] [INFO] [AUDIO_UTILS] Параметры WAV: 32000 Hz, 16 bit, channels=1, data=1216000 B
+[2000-01-01 00:00:12.052] [INFO] [AUDIO_UTILS] [TRACE ENTER] init_hardware_i2s(rate=32000, bits=16, channels=2, ibuf=16384, pins=(15,16,17,0))
+[2000-01-01 00:00:12.072] [INFO] [AUDIO_UTILS] Конфигурирование I2S (Rate=32000Hz, Bits=16, Format=1, Buffer=16384B)...
+[2000-01-01 00:00:12.091] [INFO] [AUDIO_UTILS] [TRACE EXIT] init_hardware_i2s
+[2000-01-01 00:00:22.222] [INFO] [AUDIO_UTILS] Достигнут лимит времени воспроизведения (20000 ms)
+[2000-01-01 00:00:22.225] [INFO] [AUDIO_UTILS] [TRACE EXIT] stream_wav -> True
+[2000-01-01 00:00:22.242] [INFO] [AUDIO_UTILS] [TRACE ENTER] save_position_to_config(pos_bytes=647212, pos_sec=10.112)
+[2000-01-01 00:00:22.402] [INFO] [AUDIO_UTILS] Сохранена позиция воспроизведения в config.json: 647212 B (10.11 сек)
+[2000-01-01 00:00:22.405] [INFO] [AUDIO_UTILS] [TRACE EXIT] save_position_to_config
+[2000-01-01 00:00:22.422] [INFO] [AUDIO_UTILS] [TRACE ENTER] deinit_hardware_i2s()
+[2000-01-01 00:00:22.425] [INFO] [AUDIO_UTILS] [TRACE EXIT] deinit_hardware_i2s
+[2000-01-01 00:00:22.442] [INFO] [AUDIO_UTILS] Воспроизведение аудиофайла полностью завершено, I2S освобожден.
+[2000-01-01 00:00:22.452] [INFO] [AUDIO_UTILS] [TRACE EXIT] play_audio_track -> True
+[2000-01-01 00:00:22.454] [INFO] [BOOT_AUDIO] [TRACE EXIT] StandaloneBootPlayer.play -> True
+[2000-01-01 00:00:22.472] [INFO] [BOOT_AUDIO] [TRACE EXIT] run_boot_audio -> completed
+[2000-01-01 00:00:22.492] [INFO] [MAIN] Загрузка тяжелых сетевых и асинхронных модулей...
+[2000-01-01 00:00:23.093] [INFO] [SECURITY]  Entering __init__ SecurityManager(ttl_seconds=60)
+[2000-01-01 00:00:23.102] [INFO] [SECURITY]  Exiting __init__ SecurityManager: TTL for Nonce = 60 seconds
+[2000-01-01 00:00:23.277] [INFO] [POWER_MGR] [TRACE ENTER] PowerManager.__init__(pin_num=4)
+[2000-01-01 00:00:23.294] [INFO] [POWER_MGR] [TRACE EXIT] PowerManager.__init__
+[2000-01-01 00:00:24.920] [INFO] [AUDIO] [TRACE ENTER] AudioPlayer.__init__()
+[2000-01-01 00:00:24.922] [INFO] [AUDIO] [TRACE EXIT] AudioPlayer.__init__
+[2000-01-01 00:00:24.942] [INFO] [MAIN] Инициализация сетевых интерфейсов и веб-сервера Microdot...
+[2000-01-01 00:00:24.945] [INFO] [NETWORK] [TRACE ENTER] setup_network()
+[2000-01-01 00:00:24.962] [INFO] [NETWORK] Установлено сетевое имя устройства (mDNS): bell555
+[2000-01-01 00:00:25.965] [WARNING] [NETWORK] [TRACE ENTER] initWifiMode
+[2000-01-01 00:00:26.133] [INFO] [NETWORK] [Enter] find_best_network выбора оптимальной Wi-Fi сети...
+[2000-01-01 00:00:26.152] [INFO] [NETWORK] [Enter] get_network_list Сканирование Wi-Fi сети...
+[2000-01-01 00:00:28.682] [INFO] [NETWORK] get_network_list Сканирование Wi-Fi сети завершено. Найдено [(b'MyHome_555', b'4\n3d\x89\x00', 6, -50, 3, False), (b'BASJA8', b'\xb0\x1fG@\xe1\x0b', 1, -78, 3, False), (b'MyHomeMain', b'\xa8n\x84\x95~\xfc', 5, -82, 3, False), (b'Home555', b'\xd45\x1dQ\x154', 11, -86, 3, False), (b'ofir1977', b'\xb0\xbb\xe5e\xed\x04', 4, -88, 3, False)] сетей.
+[2000-01-01 00:00:28.722] [INFO] [NETWORK] [Exit] get_network_list Сканирование Wi-Fi сети: [{'rssi': -50, 'authmode': 3, 'ssid': 'MyHome_555'}, {'rssi': -78, 'authmode': 3, 'ssid': 'BASJA8'}, {'rssi': -82, 'authmode': 3, 'ssid': 'MyHomeMain'}, {'rssi': -86, 'authmode': 3, 'ssid': 'Home555'}, {'rssi': -88, 'authmode': 3, 'ssid': 'ofir1977'}]
+[2000-01-01 00:00:28.742] [INFO] [NETWORK] find_best_network Сканированная сеть: '{'ssid': 'MyHome_555', 'password': 'ENC:GVzJ8MGTeGtInaizDig8+w=='}' (RSSI: -50 dBm).
+[2000-01-01 00:00:28.752] [INFO] [NETWORK] find_best_network Найдена сеть: 'MyHome_555'. Попытка подключения...
+[2000-01-01 00:00:28.755] [INFO] [SECURITY]  Entering decrypt_str
+[2000-01-01 00:00:28.772] [INFO] [SECURITY]  Entering _get_aes_key_and_iv
+[2000-01-01 00:00:28.807] [INFO] [SECURITY]  Exiting _get_aes_key_and_iv
+[2000-01-01 00:00:28.810] [INFO] [SECURITY]  Exiting decrypt_str
+[2000-01-01 00:00:28.832] [INFO] [NETWORK] [Exit] find_best_network выбора оптимальной Wi-Fi сети: MyHome_555
+[2000-01-01 00:00:28.837] [INFO] [NETWORK] initWifiMode Подключение к роутеру 'MyHome_555'...
+[2000-01-01 00:00:31.252] [INFO] [NETWORK] initWifiMode Подключено к роутеру! Выделенный IP: 192.168.0.190
+[2000-01-01 00:00:31.255] [INFO] [NETWORK] [TRACE EXIT] initWifiMode -> STA, 192.168.0.190
+[2000-01-01 00:00:31.272] [INFO] [NETWORK] [TRACE Exit] setup_network() -> 'STA', '192.168.0.190'
+[2000-01-01 00:00:31.276] [INFO] [POWER_MGR] [TRACE ENTER] PowerManager.start_hardware_timeout(mode=STA, timeout_sec=10)
+[2000-01-01 00:00:31.292] [INFO] [POWER_MGR] [TRACE ENTER] PowerManager.set_timeout(timeout_sec=10)
+[2000-01-01 00:00:31.295] [INFO] [POWER_MGR] [TRACE ENTER] PowerManager.notify_activity()
+[2000-01-01 00:00:31.312] [INFO] [POWER_MGR] [TRACE EXIT] PowerManager.notify_activity
+[2000-01-01 00:00:31.315] [INFO] [INDICATOR] [TRACE ENTER] set_led_mode(mode=police)
+[2000-01-01 00:00:31.332] [INFO] [INDICATOR] [INDICATOR] Режим индикации успешно переключен на: 'police'
+[2000-01-01 00:00:31.335] [INFO] [INDICATOR] [TRACE EXIT] set_led_mode
+[2000-01-01 00:00:31.352] [INFO] [POWER_MGR] [POWER_MGR] Новый таймаут: 10 сек.
+[2000-01-01 00:00:31.355] [INFO] [POWER_MGR] [TRACE EXIT] PowerManager.set_timeout
+[2000-01-01 00:00:31.372] [INFO] [POWER_MGR] [TRACE EXIT] PowerManager.start_hardware_timeout
+[2000-01-01 00:00:31.422] [INFO] [SERVER] [TRACE ENTER] init_server(config_keys=['repeat_count', 'i2s_ws_pin', 'server_host', 'i2s_bck_pin', 'smart_timeout_sec', 'max_file_size', 'hostname', 'boot_mode', 'last_play_pos_bytes', 'wifi_ssid', 'ap_ssid', 'cert_path', 'i2s_id', 'flush_log_file', 'server_port', 'fade_out_ms', 'allowed_origins', 'i2s_sd_pin', 'html_index_path', 'last_play_pos_sec', 'media_dir', 'wifi_password', 'key_path', 'ap_ip', 'allowed_extensions', 'upload_password', 'resume_playback', 'wifi_networks', 'encrypted_fields', 'target_filename', 'ap_password', 'max_play_duration_sec'])
+[2000-01-01 00:00:31.442] [INFO] [SECURITY]  Entering __init__ SecurityManager(ttl_seconds=60)
+[2000-01-01 00:00:31.445] [INFO] [SECURITY]  Exiting __init__ SecurityManager: TTL for Nonce = 60 seconds
+[2000-01-01 00:00:31.451] [INFO] [SERVER] [TRACE EXIT] init_server -> app ready
+[2000-01-01 00:00:31.462] [INFO] [MAIN] Запуск Microdot веб-сервера на 0.0.0.0:443...
+[2000-01-01 00:00:31.472] [INFO] [MAIN] Доступ к панели управления по IP: https://192.168.0.190
+[2000-01-01 00:00:31.492] [INFO] [MAIN] Доступ к панели управления по имени: https://bell555 или https://bell555.local
+[2000-01-01 00:00:31.495] [INFO] [SERVER] [TRACE ENTER] start_server(host=0.0.0.0, port=443)
+[2000-01-01 00:00:31.543] [INFO] [SERVER] Запуск Microdot HTTPS на 0.0.0.0:443...
+[2000-01-01 00:00:31.554] [INFO] [INDICATOR] [TRACE ENTER] start_led_loop(pin_num=48)
+[2000-01-01 00:00:33.212] [INFO] [NETWORK] [TRACE ENTER] handle_async_exception(context={'future': <Task>, 'message': "Task exception wasn't retrieved", 'exception': OSError(-30592, 'MBEDTLS_ERR_SSL_FATAL_ALERT_MESSAGE')})
+[2000-01-01 00:00:33.222] [INFO] [NETWORK] [TRACE EXIT] handle_async_exception (ignored socket reset)
+[2000-01-01 00:00:33.552] [INFO] [NETWORK] [TRACE ENTER] handle_async_exception(context={'future': <Task>, 'message': "Task exception wasn't retrieved", 'exception': OSError(-30592, 'MBEDTLS_ERR_SSL_FATAL_ALERT_MESSAGE')})
+[2000-01-01 00:00:33.556] [INFO] [NETWORK] [TRACE EXIT] handle_async_exception (ignored socket reset)
+[2000-01-01 00:00:33.878] [INFO] [NETWORK] [TRACE ENTER] handle_async_exception(context={'future': <Task>, 'message': "Task exception wasn't retrieved", 'exception': OSError(-30592, 'MBEDTLS_ERR_SSL_FATAL_ALERT_MESSAGE')})
+[2000-01-01 00:00:33.895] [INFO] [NETWORK] [TRACE EXIT] handle_async_exception (ignored socket reset)
+[2000-01-01 00:00:34.782] [INFO] [SERVER] [TRACE ENTER] process_before_request(uri=/, method=GET)
+[2000-01-01 00:00:34.797] [INFO] [POWER_MGR] [TRACE ENTER] PowerManager.notify_activity()
+[2000-01-01 00:00:34.812] [INFO] [POWER_MGR] [TRACE EXIT] PowerManager.notify_activity
+[2000-01-01 00:00:34.816] [INFO] [SERVER] [TRACE EXIT] process_before_request(uri=/, method=GET)
+[2000-01-01 00:00:34.821] [INFO] [SERVER] [TRACE ENTER] index(uri=/, method=GET)
+[2000-01-01 00:00:34.870] [INFO] [SERVER] [TRACE EXIT] index(uri=/, method=GET)
+[2000-01-01 00:00:34.882] [INFO] [SERVER] [TRACE ENTER] after_request add_pna_header(uri=/, method=GET)
+[2000-01-01 00:00:34.886] [INFO] [SERVER] [TRACE EXIT] after_request add_pna_header(uri=/, method=GET)
+[2000-01-01 00:00:34.902] [INFO] [SERVER] [TRACE ENTER] after_request cleanup_and_cors(uri=/, method=GET)
+[2000-01-01 00:00:34.906] [INFO] [SERVER] [TRACE ENTER] set_allowed_origin_headers (uri=/, method=GET)
+[2000-01-01 00:00:34.922] [INFO] [SERVER] [TRACE ENTER] get_allowed_origin(origin=, uri=/, method=GET)
+[2000-01-01 00:00:34.926] [INFO] [SERVER] [TRACE EXIT] get_allowed_origin(uri=/, method=GET) -> *
+[2000-01-01 00:00:34.942] [INFO] [SERVER] [TRACE EXIT] set_allowed_origin_headers (uri=/, method=GET)
+[2000-01-01 00:00:34.958] [INFO] [SERVER] [TRACE EXIT] after_request cleanup_and_cors(uri=/, method=GET)
+[2000-01-01 00:00:35.372] [INFO] [NETWORK] [TRACE ENTER] handle_async_exception(context={'future': <Task>, 'message': "Task exception wasn't retrieved", 'exception': OSError(-30592, 'MBEDTLS_ERR_SSL_FATAL_ALERT_MESSAGE')})
+[2000-01-01 00:00:35.382] [INFO] [NETWORK] [TRACE EXIT] handle_async_exception (ignored socket reset)
+[2000-01-01 00:00:35.722] [INFO] [NETWORK] [TRACE ENTER] handle_async_exception(context={'future': <Task>, 'message': "Task exception wasn't retrieved", 'exception': OSError(-30592, 'MBEDTLS_ERR_SSL_FATAL_ALERT_MESSAGE')})
+[2000-01-01 00:00:35.726] [INFO] [NETWORK] [TRACE EXIT] handle_async_exception (ignored socket reset)
+[2000-01-01 00:00:36.052] [INFO] [NETWORK] [TRACE ENTER] handle_async_exception(context={'future': <Task>, 'message': "Task exception wasn't retrieved", 'exception': OSError(-30592, 'MBEDTLS_ERR_SSL_FATAL_ALERT_MESSAGE')})
+[2000-01-01 00:00:36.062] [INFO] [NETWORK] [TRACE EXIT] handle_async_exception (ignored socket reset)
+[2000-01-01 00:00:37.299] [INFO] [SERVER] [TRACE ENTER] process_before_request(uri=/www/css/style.css, method=GET)
+[2000-01-01 00:00:37.315] [INFO] [POWER_MGR] [TRACE ENTER] PowerManager.notify_activity()
+[2000-01-01 00:00:37.332] [INFO] [POWER_MGR] [TRACE EXIT] PowerManager.notify_activity
+[2000-01-01 00:00:37.336] [INFO] [SERVER] [TRACE EXIT] process_before_request(uri=/www/css/style.css, method=GET)
+[2000-01-01 00:00:37.349] [INFO] [SERVER] [TRACE ENTER] serve_www(path=css/style.css)
+[2000-01-01 00:00:37.489] [INFO] [SERVER] [TRACE EXIT] serve_www
+[2000-01-01 00:00:37.505] [INFO] [SERVER] [TRACE ENTER] after_request add_pna_header(uri=/www/css/style.css, method=GET)
+[2000-01-01 00:00:37.522] [INFO] [SERVER] [TRACE EXIT] after_request add_pna_header(uri=/www/css/style.css, method=GET)
+[2000-01-01 00:00:37.532] [INFO] [SERVER] [TRACE ENTER] after_request cleanup_and_cors(uri=/www/css/style.css, method=GET)
+[2000-01-01 00:00:37.542] [INFO] [SERVER] [TRACE ENTER] set_allowed_origin_headers (uri=/www/css/style.css, method=GET)
+[2000-01-01 00:00:37.554] [INFO] [SERVER] [TRACE ENTER] get_allowed_origin(origin=, uri=/www/css/style.css, method=GET)
+[2000-01-01 00:00:37.572] [INFO] [SERVER] [TRACE EXIT] get_allowed_origin(uri=/www/css/style.css, method=GET) -> *
+[2000-01-01 00:00:37.582] [INFO] [SERVER] [TRACE EXIT] set_allowed_origin_headers (uri=/www/css/style.css, method=GET)
+[2000-01-01 00:00:37.598] [INFO] [SERVER] [TRACE EXIT] after_request cleanup_and_cors(uri=/www/css/style.css, method=GET)
+[2000-01-01 00:00:37.746] [INFO] [SERVER] [TRACE ENTER] process_before_request(uri=/www/js/auth.js, method=GET)
+[2000-01-01 00:00:37.764] [INFO] [POWER_MGR] [TRACE ENTER] PowerManager.notify_activity()
+[2000-01-01 00:00:37.802] [INFO] [POWER_MGR] [TRACE EXIT] PowerManager.notify_activity
+[2000-01-01 00:00:37.815] [INFO] [SERVER] [TRACE EXIT] process_before_request(uri=/www/js/auth.js, method=GET)
+[2000-01-01 00:00:37.832] [INFO] [SERVER] [TRACE ENTER] serve_www(path=js/auth.js)
+[2000-01-01 00:00:37.977] [INFO] [SERVER] [TRACE EXIT] serve_www
+[2000-01-01 00:00:37.995] [INFO] [SERVER] [TRACE ENTER] after_request add_pna_header(uri=/www/js/auth.js, method=GET)
+[2000-01-01 00:00:38.012] [INFO] [SERVER] [TRACE EXIT] after_request add_pna_header(uri=/www/js/auth.js, method=GET)
+[2000-01-01 00:00:38.022] [INFO] [SERVER] [TRACE ENTER] after_request cleanup_and_cors(uri=/www/js/auth.js, method=GET)
+[2000-01-01 00:00:38.032] [INFO] [SERVER] [TRACE ENTER] set_allowed_origin_headers (uri=/www/js/auth.js, method=GET)
+[2000-01-01 00:00:38.042] [INFO] [SERVER] [TRACE ENTER] get_allowed_origin(origin=, uri=/www/js/auth.js, method=GET)
+[2000-01-01 00:00:38.054] [INFO] [SERVER] [TRACE EXIT] get_allowed_origin(uri=/www/js/auth.js, method=GET) -> *
+[2000-01-01 00:00:38.072] [INFO] [SERVER] [TRACE EXIT] set_allowed_origin_headers (uri=/www/js/auth.js, method=GET)
+[2000-01-01 00:00:38.089] [INFO] [SERVER] [TRACE EXIT] after_request cleanup_and_cors(uri=/www/js/auth.js, method=GET)
+[2000-01-01 00:00:38.112] [INFO] [SERVER] [TRACE ENTER] process_before_request(uri=/www/js/audio.js, method=GET)
+[2000-01-01 00:00:38.129] [INFO] [POWER_MGR] [TRACE ENTER] PowerManager.notify_activity()
+[2000-01-01 00:00:38.142] [INFO] [POWER_MGR] [TRACE EXIT] PowerManager.notify_activity
+[2000-01-01 00:00:38.145] [INFO] [SERVER] [TRACE EXIT] process_before_request(uri=/www/js/audio.js, method=GET)
+[2000-01-01 00:00:38.151] [INFO] [SERVER] [TRACE ENTER] serve_www(path=js/audio.js)
+[2000-01-01 00:00:38.293] [INFO] [SERVER] [TRACE EXIT] serve_www
+[2000-01-01 00:00:38.312] [INFO] [SERVER] [TRACE ENTER] after_request add_pna_header(uri=/www/js/audio.js, method=GET)
+[2000-01-01 00:00:38.316] [INFO] [SERVER] [TRACE EXIT] after_request add_pna_header(uri=/www/js/audio.js, method=GET)
+[2000-01-01 00:00:38.332] [INFO] [SERVER] [TRACE ENTER] after_request cleanup_and_cors(uri=/www/js/audio.js, method=GET)
+[2000-01-01 00:00:38.342] [INFO] [SERVER] [TRACE ENTER] set_allowed_origin_headers (uri=/www/js/audio.js, method=GET)
+[2000-01-01 00:00:38.352] [INFO] [SERVER] [TRACE ENTER] get_allowed_origin(origin=, uri=/www/js/audio.js, method=GET)
+[2000-01-01 00:00:38.364] [INFO] [SERVER] [TRACE EXIT] get_allowed_origin(uri=/www/js/audio.js, method=GET) -> *
+[2000-01-01 00:00:38.382] [INFO] [SERVER] [TRACE EXIT] set_allowed_origin_headers (uri=/www/js/audio.js, method=GET)
+[2000-01-01 00:00:38.398] [INFO] [SERVER] [TRACE EXIT] after_request cleanup_and_cors(uri=/www/js/audio.js, method=GET)
+[2000-01-01 00:00:38.411] [INFO] [SERVER] [TRACE ENTER] process_before_request(uri=/www/js/app.js, method=GET)
+[2000-01-01 00:00:38.427] [INFO] [POWER_MGR] [TRACE ENTER] PowerManager.notify_activity()
+[2000-01-01 00:00:38.432] [INFO] [POWER_MGR] [TRACE EXIT] PowerManager.notify_activity
+[2000-01-01 00:00:38.442] [INFO] [SERVER] [TRACE EXIT] process_before_request(uri=/www/js/app.js, method=GET)
+[2000-01-01 00:00:38.452] [INFO] [SERVER] [TRACE ENTER] serve_www(path=js/app.js)
+[2000-01-01 00:00:38.593] [INFO] [SERVER] [TRACE EXIT] serve_www
+[2000-01-01 00:00:38.605] [INFO] [SERVER] [TRACE ENTER] after_request add_pna_header(uri=/www/js/app.js, method=GET)
+[2000-01-01 00:00:38.622] [INFO] [SERVER] [TRACE EXIT] after_request add_pna_header(uri=/www/js/app.js, method=GET)
+[2000-01-01 00:00:38.632] [INFO] [SERVER] [TRACE ENTER] after_request cleanup_and_cors(uri=/www/js/app.js, method=GET)
+[2000-01-01 00:00:38.642] [INFO] [SERVER] [TRACE ENTER] set_allowed_origin_headers (uri=/www/js/app.js, method=GET)
+[2000-01-01 00:00:38.655] [INFO] [SERVER] [TRACE ENTER] get_allowed_origin(origin=, uri=/www/js/app.js, method=GET)
+[2000-01-01 00:00:38.672] [INFO] [SERVER] [TRACE EXIT] get_allowed_origin(uri=/www/js/app.js, method=GET) -> *
+[2000-01-01 00:00:38.682] [INFO] [SERVER] [TRACE EXIT] set_allowed_origin_headers (uri=/www/js/app.js, method=GET)
+[2000-01-01 00:00:38.729] [INFO] [SERVER] [TRACE EXIT] after_request cleanup_and_cors(uri=/www/js/app.js, method=GET)
+[2000-01-01 00:00:39.862] [INFO] [NETWORK] [TRACE ENTER] handle_async_exception(context={'future': <Task>, 'message': "Task exception wasn't retrieved", 'exception': OSError(-30592, 'MBEDTLS_ERR_SSL_FATAL_ALERT_MESSAGE')})
+[2000-01-01 00:00:39.868] [INFO] [NETWORK] [TRACE EXIT] handle_async_exception (ignored socket reset)
+[2000-01-01 00:00:40.512] [INFO] [NETWORK] [TRACE ENTER] handle_async_exception(context={'future': <Task>, 'message': "Task exception wasn't retrieved", 'exception': OSError(-30592, 'MBEDTLS_ERR_SSL_FATAL_ALERT_MESSAGE')})
+[2000-01-01 00:00:40.517] [INFO] [NETWORK] [TRACE EXIT] handle_async_exception (ignored socket reset)
+[2000-01-01 00:00:41.077] [INFO] [SERVER] [TRACE ENTER] process_before_request(uri=/favicon.ico, method=GET)
+[2000-01-01 00:00:41.094] [INFO] [POWER_MGR] [TRACE ENTER] PowerManager.notify_activity()
+[2000-01-01 00:00:41.111] [INFO] [POWER_MGR] [TRACE EXIT] PowerManager.notify_activity
+[2000-01-01 00:00:41.115] [INFO] [SERVER] [TRACE EXIT] process_before_request(uri=/favicon.ico, method=GET)
+[2000-01-01 00:00:41.132] [INFO] [SERVER] [TRACE ENTER] catch_all(path=favicon.ico)
+[2000-01-01 00:00:41.136] [INFO] [SERVER] [TRACE EXIT] catch_all -> 302 Redirect
+[2000-01-01 00:00:41.152] [INFO] [SERVER] [TRACE ENTER] after_request add_pna_header(uri=/favicon.ico, method=GET)
+[2000-01-01 00:00:41.156] [INFO] [SERVER] [TRACE EXIT] after_request add_pna_header(uri=/favicon.ico, method=GET)
+[2000-01-01 00:00:41.172] [INFO] [SERVER] [TRACE ENTER] after_request cleanup_and_cors(uri=/favicon.ico, method=GET)
+[2000-01-01 00:00:41.182] [INFO] [SERVER] [TRACE ENTER] set_allowed_origin_headers (uri=/favicon.ico, method=GET)
+[2000-01-01 00:00:41.192] [INFO] [SERVER] [TRACE ENTER] get_allowed_origin(origin=, uri=/favicon.ico, method=GET)
+[2000-01-01 00:00:41.202] [INFO] [SERVER] [TRACE EXIT] get_allowed_origin(uri=/favicon.ico, method=GET) -> *
+[2000-01-01 00:00:41.214] [INFO] [SERVER] [TRACE EXIT] set_allowed_origin_headers (uri=/favicon.ico, method=GET)
+[2000-01-01 00:00:41.230] [INFO] [SERVER] [TRACE EXIT] after_request cleanup_and_cors(uri=/favicon.ico, method=GET)
+[2000-01-01 00:00:41.293] [INFO] [SERVER] [TRACE ENTER] process_before_request(uri=/www/login.html, method=GET)
+[2000-01-01 00:00:41.309] [INFO] [POWER_MGR] [TRACE ENTER] PowerManager.notify_activity()
+[2000-01-01 00:00:41.322] [INFO] [POWER_MGR] [TRACE EXIT] PowerManager.notify_activity
+[2000-01-01 00:00:41.326] [INFO] [SERVER] [TRACE EXIT] process_before_request(uri=/www/login.html, method=GET)
+[2000-01-01 00:00:41.342] [INFO] [SERVER] [TRACE ENTER] serve_www(path=login.html)
+[2000-01-01 00:00:41.474] [INFO] [SERVER] [TRACE EXIT] serve_www
+[2000-01-01 00:00:41.492] [INFO] [SERVER] [TRACE ENTER] after_request add_pna_header(uri=/www/login.html, method=GET)
+[2000-01-01 00:00:41.496] [INFO] [SERVER] [TRACE EXIT] after_request add_pna_header(uri=/www/login.html, method=GET)
+[2000-01-01 00:00:41.512] [INFO] [SERVER] [TRACE ENTER] after_request cleanup_and_cors(uri=/www/login.html, method=GET)
+[2000-01-01 00:00:41.522] [INFO] [SERVER] [TRACE ENTER] set_allowed_origin_headers (uri=/www/login.html, method=GET)
+[2000-01-01 00:00:41.532] [INFO] [SERVER] [TRACE ENTER] get_allowed_origin(origin=, uri=/www/login.html, method=GET)
+[2000-01-01 00:00:41.544] [INFO] [SERVER] [TRACE EXIT] get_allowed_origin(uri=/www/login.html, method=GET) -> *
+[2000-01-01 00:00:41.562] [INFO] [SERVER] [TRACE EXIT] set_allowed_origin_headers (uri=/www/login.html, method=GET)
+[2000-01-01 00:00:41.577] [INFO] [SERVER] [TRACE EXIT] after_request cleanup_and_cors(uri=/www/login.html, method=GET)
+[2000-01-01 00:00:45.472] [INFO] [NETWORK] [TRACE ENTER] handle_async_exception(context={'future': <Task>, 'message': "Task exception wasn't retrieved", 'exception': OSError(-30592, 'MBEDTLS_ERR_SSL_FATAL_ALERT_MESSAGE')})
+[2000-01-01 00:00:45.477] [INFO] [NETWORK] [TRACE EXIT] handle_async_exception (ignored socket reset)
+[2000-01-01 00:00:46.057] [INFO] [SERVER] [TRACE ENTER] process_before_request(uri=/api/get-nonce, method=GET)
+[2000-01-01 00:00:46.073] [INFO] [POWER_MGR] [TRACE ENTER] PowerManager.notify_activity()
+[2000-01-01 00:00:46.082] [INFO] [POWER_MGR] [TRACE EXIT] PowerManager.notify_activity
+[2000-01-01 00:00:46.092] [INFO] [SERVER] [TRACE EXIT] process_before_request(uri=/api/get-nonce, method=GET)
+[2000-01-01 00:00:46.096] [INFO] [SERVER] [TRACE ENTER] get_nonce()
+[2000-01-01 00:00:46.100] [INFO] [SECURITY]  Entering generate_nonce
+[2000-01-01 00:00:46.112] [INFO] [SECURITY]  Entering _cleanup_expired
+[2000-01-01 00:00:46.116] [INFO] [SECURITY]  Exiting _cleanup_expired
+[2000-01-01 00:00:46.131] [INFO] [SECURITY]  Exiting generate_nonce: nonce=75cde7c27c6f0cdf
+[2000-01-01 00:00:46.135] [INFO] [SERVER] [TRACE EXIT] get_nonce
+[2000-01-01 00:00:46.152] [INFO] [SERVER] [TRACE ENTER] after_request add_pna_header(uri=/api/get-nonce, method=GET)
+[2000-01-01 00:00:46.156] [INFO] [SERVER] [TRACE EXIT] after_request add_pna_header(uri=/api/get-nonce, method=GET)
+[2000-01-01 00:00:46.172] [INFO] [SERVER] [TRACE ENTER] after_request cleanup_and_cors(uri=/api/get-nonce, method=GET)
+[2000-01-01 00:00:46.182] [INFO] [SERVER] [TRACE ENTER] set_allowed_origin_headers (uri=/api/get-nonce, method=GET)
+[2000-01-01 00:00:46.192] [INFO] [SERVER] [TRACE ENTER] get_allowed_origin(origin=, uri=/api/get-nonce, method=GET)
+[2000-01-01 00:00:46.202] [INFO] [SERVER] [TRACE EXIT] get_allowed_origin(uri=/api/get-nonce, method=GET) -> *
+[2000-01-01 00:00:46.214] [INFO] [SERVER] [TRACE EXIT] set_allowed_origin_headers (uri=/api/get-nonce, method=GET)
+[2000-01-01 00:00:46.230] [INFO] [SERVER] [TRACE EXIT] after_request cleanup_and_cors(uri=/api/get-nonce, method=GET)
+[2000-01-01 00:00:46.632] [INFO] [NETWORK] [TRACE ENTER] handle_async_exception(context={'future': <Task>, 'message': "Task exception wasn't retrieved", 'exception': OSError(-30592, 'MBEDTLS_ERR_SSL_FATAL_ALERT_MESSAGE')})
+[2000-01-01 00:00:46.642] [INFO] [NETWORK] [TRACE EXIT] handle_async_exception (ignored socket reset)
+[2000-01-01 00:00:47.186] [INFO] [SERVER] [TRACE ENTER] process_before_request(uri=/api/verify-auth, method=POST)
+[2000-01-01 00:00:47.202] [INFO] [POWER_MGR] [TRACE ENTER] PowerManager.notify_activity()
+[2000-01-01 00:00:47.212] [INFO] [POWER_MGR] [TRACE EXIT] PowerManager.notify_activity
+[2000-01-01 00:00:47.222] [INFO] [SERVER] [TRACE EXIT] process_before_request(uri=/api/verify-auth, method=POST)
+[2000-01-01 00:00:47.225] [INFO] [SERVER] [TRACE ENTER] verify_auth() POST
+[2000-01-01 00:00:47.242] [INFO] [SECURITY]  Entering verify_upload_auth
+[2000-01-01 00:00:47.246] [INFO] [SECURITY]  Entering decrypt_str
+[2000-01-01 00:00:47.249] [INFO] [SECURITY]  Entering _get_aes_key_and_iv
+[2000-01-01 00:00:47.253] [INFO] [SECURITY]  Exiting _get_aes_key_and_iv
+[2000-01-01 00:00:47.262] [INFO] [SECURITY]  Exiting decrypt_str
+[2000-01-01 00:00:47.266] [INFO] [SECURITY]  Exiting hash_sha256
+[2000-01-01 00:00:47.282] [INFO] [SECURITY] Успешная авторизация (Nonce: 75cde7c27c6f0cdf)
+[2000-01-01 00:00:47.286] [INFO] [POWER_MGR] [TRACE ENTER] PowerManager.set_timeout(timeout_sec=600)
+[2000-01-01 00:00:47.302] [INFO] [POWER_MGR] [TRACE ENTER] PowerManager.notify_activity()
+[2000-01-01 00:00:47.306] [INFO] [POWER_MGR] [TRACE EXIT] PowerManager.notify_activity
+[2000-01-01 00:00:47.322] [INFO] [INDICATOR] [TRACE ENTER] set_led_mode(mode=moonlight)
+[2000-01-01 00:00:47.332] [INFO] [INDICATOR] [INDICATOR] Режим индикации успешно переключен на: 'moonlight'
+[2000-01-01 00:00:47.335] [INFO] [INDICATOR] [TRACE EXIT] set_led_mode
+[2000-01-01 00:00:47.352] [INFO] [POWER_MGR] [POWER_MGR] Новый таймаут: 600 сек.
+[2000-01-01 00:00:47.354] [INFO] [POWER_MGR] [TRACE EXIT] PowerManager.set_timeout
+[2000-01-01 00:00:47.372] [INFO] [SERVER] [TRACE EXIT] verify_auth -> ok (timeout: 600 s)
+[2000-01-01 00:00:47.377] [INFO] [SERVER] [TRACE ENTER] after_request add_pna_header(uri=/api/verify-auth, method=POST)
+[2000-01-01 00:00:47.410] [INFO] [SERVER] [TRACE EXIT] after_request add_pna_header(uri=/api/verify-auth, method=POST)
+[2000-01-01 00:00:47.424] [INFO] [SERVER] [TRACE ENTER] after_request cleanup_and_cors(uri=/api/verify-auth, method=POST)
+[2000-01-01 00:00:47.442] [INFO] [SERVER] [TRACE ENTER] set_allowed_origin_headers (uri=/api/verify-auth, method=POST)
+[2000-01-01 00:00:47.452] [INFO] [SERVER] [TRACE ENTER] get_allowed_origin(origin=https://bell555.local, uri=/api/verify-auth, method=POST)
+[2000-01-01 00:00:47.462] [INFO] [SERVER] [TRACE EXIT] get_allowed_origin(origin=https://bell555.local, uri=/api/verify-auth, method=POST) -> allowed
+[2000-01-01 00:00:47.475] [INFO] [SERVER] [TRACE EXIT] set_allowed_origin_headers (uri=/api/verify-auth, method=POST)
+[2000-01-01 00:00:47.491] [INFO] [SERVER] [TRACE EXIT] after_request cleanup_and_cors(uri=/api/verify-auth, method=POST)
+[2000-01-01 00:00:47.882] [INFO] [NETWORK] [TRACE ENTER] handle_async_exception(context={'future': <Task>, 'message': "Task exception wasn't retrieved", 'exception': OSError(-30592, 'MBEDTLS_ERR_SSL_FATAL_ALERT_MESSAGE')})
+[2000-01-01 00:00:47.892] [INFO] [NETWORK] [TRACE EXIT] handle_async_exception (ignored socket reset)
+[2000-01-01 00:00:48.439] [INFO] [SERVER] [TRACE ENTER] process_before_request(uri=/www/main.html, method=GET)
+[2000-01-01 00:00:48.455] [INFO] [POWER_MGR] [TRACE ENTER] PowerManager.notify_activity()
+[2000-01-01 00:00:48.472] [INFO] [POWER_MGR] [TRACE EXIT] PowerManager.notify_activity
+[2000-01-01 00:00:48.475] [INFO] [SERVER] [TRACE EXIT] process_before_request(uri=/www/main.html, method=GET)
+[2000-01-01 00:00:48.492] [INFO] [SERVER] [TRACE ENTER] serve_www(path=main.html)
+[2000-01-01 00:00:48.622] [INFO] [SERVER] [TRACE EXIT] serve_www
+[2000-01-01 00:00:48.632] [INFO] [SERVER] [TRACE ENTER] after_request add_pna_header(uri=/www/main.html, method=GET)
+[2000-01-01 00:00:48.642] [INFO] [SERVER] [TRACE EXIT] after_request add_pna_header(uri=/www/main.html, method=GET)
+[2000-01-01 00:00:48.652] [INFO] [SERVER] [TRACE ENTER] after_request cleanup_and_cors(uri=/www/main.html, method=GET)
+[2000-01-01 00:00:48.664] [INFO] [SERVER] [TRACE ENTER] set_allowed_origin_headers (uri=/www/main.html, method=GET)
+[2000-01-01 00:00:48.682] [INFO] [SERVER] [TRACE ENTER] get_allowed_origin(origin=, uri=/www/main.html, method=GET)
+[2000-01-01 00:00:48.685] [INFO] [SERVER] [TRACE EXIT] get_allowed_origin(uri=/www/main.html, method=GET) -> *
+[2000-01-01 00:00:48.702] [INFO] [SERVER] [TRACE EXIT] set_allowed_origin_headers (uri=/www/main.html, method=GET)
+[2000-01-01 00:00:48.718] [INFO] [SERVER] [TRACE EXIT] after_request cleanup_and_cors(uri=/www/main.html, method=GET)
+[2000-01-01 00:00:49.102] [INFO] [NETWORK] [TRACE ENTER] handle_async_exception(context={'future': <Task>, 'message': "Task exception wasn't retrieved", 'exception': OSError(-30592, 'MBEDTLS_ERR_SSL_FATAL_ALERT_MESSAGE')})
+[2000-01-01 00:00:49.112] [INFO] [NETWORK] [TRACE EXIT] handle_async_exception (ignored socket reset)
+[2000-01-01 00:00:49.646] [INFO] [SERVER] [TRACE ENTER] process_before_request(uri=/www/upload.html, method=GET)
+[2000-01-01 00:00:49.662] [INFO] [POWER_MGR] [TRACE ENTER] PowerManager.notify_activity()
+[2000-01-01 00:00:49.672] [INFO] [POWER_MGR] [TRACE EXIT] PowerManager.notify_activity
+[2000-01-01 00:00:49.676] [INFO] [SERVER] [TRACE EXIT] process_before_request(uri=/www/upload.html, method=GET)
+[2000-01-01 00:00:49.692] [INFO] [SERVER] [TRACE ENTER] serve_www(path=upload.html)
+[2000-01-01 00:00:49.815] [INFO] [SERVER] [TRACE EXIT] serve_www
+[2000-01-01 00:00:49.825] [INFO] [SERVER] [TRACE ENTER] after_request add_pna_header(uri=/www/upload.html, method=GET)
+[2000-01-01 00:00:49.842] [INFO] [SERVER] [TRACE EXIT] after_request add_pna_header(uri=/www/upload.html, method=GET)
+[2000-01-01 00:00:49.852] [INFO] [SERVER] [TRACE ENTER] after_request cleanup_and_cors(uri=/www/upload.html, method=GET)
+[2000-01-01 00:00:49.862] [INFO] [SERVER] [TRACE ENTER] set_allowed_origin_headers (uri=/www/upload.html, method=GET)
+[2000-01-01 00:00:49.872] [INFO] [SERVER] [TRACE ENTER] get_allowed_origin(origin=, uri=/www/upload.html, method=GET)
+[2000-01-01 00:00:49.917] [INFO] [SERVER] [TRACE EXIT] get_allowed_origin(uri=/www/upload.html, method=GET) -> *
+[2000-01-01 00:00:49.935] [INFO] [SERVER] [TRACE EXIT] set_allowed_origin_headers (uri=/www/upload.html, method=GET)
+[2000-01-01 00:00:49.951] [INFO] [SERVER] [TRACE EXIT] after_request cleanup_and_cors(uri=/www/upload.html, method=GET)
+[2000-01-01 00:00:50.352] [INFO] [NETWORK] [TRACE ENTER] handle_async_exception(context={'future': <Task>, 'message': "Task exception wasn't retrieved", 'exception': OSError(-30592, 'MBEDTLS_ERR_SSL_FATAL_ALERT_MESSAGE')})
+[2000-01-01 00:00:50.372] [INFO] [NETWORK] [TRACE EXIT] handle_async_exception (ignored socket reset)
+[2000-01-01 00:00:50.929] [INFO] [SERVER] [TRACE ENTER] process_before_request(uri=/api/info, method=GET)
+[2000-01-01 00:00:50.944] [INFO] [POWER_MGR] [TRACE ENTER] PowerManager.notify_activity()
+[2000-01-01 00:00:50.962] [INFO] [POWER_MGR] [TRACE EXIT] PowerManager.notify_activity
+[2000-01-01 00:00:50.966] [INFO] [SERVER] [TRACE EXIT] process_before_request(uri=/api/info, method=GET)
+[2000-01-01 00:00:50.970] [INFO] [SERVER] [TRACE ENTER] api_info()
+[2000-01-01 00:00:50.982] [INFO] [SERVER] [TRACE ENTER] get_available_space()
+[2000-01-01 00:00:50.986] [INFO] [SERVER] [TRACE ENTER] get_free_space()
+[2000-01-01 00:00:51.397] [INFO] [SERVER] [TRACE EXIT] get_free_space -> 12550144 B
+[2000-01-01 00:00:51.414] [INFO] [SERVER] [TRACE ENTER] get_media_size()
+[2000-01-01 00:00:51.473] [INFO] [SERVER] [TRACE EXIT] get_media_size -> 1216044 B
+[2000-01-01 00:00:51.484] [INFO] [SERVER] [TRACE EXIT] get_available_space -> 13766188 B
+[2000-01-01 00:00:51.491] [INFO] [SERVER] [TRACE EXIT] api_info
+[2000-01-01 00:00:51.497] [INFO] [SERVER] [TRACE ENTER] after_request add_pna_header(uri=/api/info, method=GET)
+[2000-01-01 00:00:51.512] [INFO] [SERVER] [TRACE EXIT] after_request add_pna_header(uri=/api/info, method=GET)
+[2000-01-01 00:00:51.522] [INFO] [SERVER] [TRACE ENTER] after_request cleanup_and_cors(uri=/api/info, method=GET)
+[2000-01-01 00:00:51.526] [INFO] [SERVER] [TRACE ENTER] set_allowed_origin_headers (uri=/api/info, method=GET)
+[2000-01-01 00:00:51.542] [INFO] [SERVER] [TRACE ENTER] get_allowed_origin(origin=, uri=/api/info, method=GET)
+[2000-01-01 00:00:51.545] [INFO] [SERVER] [TRACE EXIT] get_allowed_origin(uri=/api/info, method=GET) -> *
+[2000-01-01 00:00:51.562] [INFO] [SERVER] [TRACE EXIT] set_allowed_origin_headers (uri=/api/info, method=GET)
+[2000-01-01 00:00:51.577] [INFO] [SERVER] [TRACE EXIT] after_request cleanup_and_cors(uri=/api/info, method=GET)
+[2000-01-01 00:01:13.862] [INFO] [NETWORK] [TRACE ENTER] handle_async_exception(context={'future': <Task>, 'message': "Task exception wasn't retrieved", 'exception': OSError(-30592, 'MBEDTLS_ERR_SSL_FATAL_ALERT_MESSAGE')})
+[2000-01-01 00:01:13.867] [INFO] [NETWORK] [TRACE EXIT] handle_async_exception (ignored socket reset)
+[2000-01-01 00:01:14.437] [INFO] [SERVER] [TRACE ENTER] process_before_request(uri=/favicon.ico, method=GET)
+[2000-01-01 00:01:14.453] [INFO] [POWER_MGR] [TRACE ENTER] PowerManager.notify_activity()
+[2000-01-01 00:01:14.462] [INFO] [POWER_MGR] [TRACE EXIT] PowerManager.notify_activity
+[2000-01-01 00:01:14.472] [INFO] [SERVER] [TRACE EXIT] process_before_request(uri=/favicon.ico, method=GET)
+[2000-01-01 00:01:14.476] [INFO] [SERVER] [TRACE ENTER] catch_all(path=favicon.ico)
+[2000-01-01 00:01:14.492] [INFO] [SERVER] [TRACE EXIT] catch_all -> 302 Redirect
+[2000-01-01 00:01:14.496] [INFO] [SERVER] [TRACE ENTER] after_request add_pna_header(uri=/favicon.ico, method=GET)
+[2000-01-01 00:01:14.512] [INFO] [SERVER] [TRACE EXIT] after_request add_pna_header(uri=/favicon.ico, method=GET)
+[2000-01-01 00:01:14.516] [INFO] [SERVER] [TRACE ENTER] after_request cleanup_and_cors(uri=/favicon.ico, method=GET)
+[2000-01-01 00:01:14.532] [INFO] [SERVER] [TRACE ENTER] set_allowed_origin_headers (uri=/favicon.ico, method=GET)
+[2000-01-01 00:01:14.542] [INFO] [SERVER] [TRACE ENTER] get_allowed_origin(origin=, uri=/favicon.ico, method=GET)
+[2000-01-01 00:01:14.575] [INFO] [SERVER] [TRACE EXIT] get_allowed_origin(uri=/favicon.ico, method=GET) -> *
+[2000-01-01 00:01:14.585] [INFO] [SERVER] [TRACE EXIT] set_allowed_origin_headers (uri=/favicon.ico, method=GET)
+[2000-01-01 00:01:14.600] [INFO] [SERVER] [TRACE EXIT] after_request cleanup_and_cors(uri=/favicon.ico, method=GET)
+[2000-01-01 00:02:32.552] [INFO] [NETWORK] [TRACE ENTER] handle_async_exception(context={'future': <Task>, 'message': "Task exception wasn't retrieved", 'exception': OSError(-30592, 'MBEDTLS_ERR_SSL_FATAL_ALERT_MESSAGE')})
+[2000-01-01 00:02:32.572] [INFO] [NETWORK] [TRACE EXIT] handle_async_exception (ignored socket reset)
+[2000-01-01 00:02:33.127] [INFO] [SERVER] [TRACE ENTER] process_before_request(uri=/favicon.ico, method=GET)
+[2000-01-01 00:02:33.143] [INFO] [POWER_MGR] [TRACE ENTER] PowerManager.notify_activity()
+[2000-01-01 00:02:33.152] [INFO] [POWER_MGR] [TRACE EXIT] PowerManager.notify_activity
+[2000-01-01 00:02:33.162] [INFO] [SERVER] [TRACE EXIT] process_before_request(uri=/favicon.ico, method=GET)
+[2000-01-01 00:02:33.167] [INFO] [SERVER] [TRACE ENTER] catch_all(path=favicon.ico)
+[2000-01-01 00:02:33.173] [INFO] [SERVER] [TRACE EXIT] catch_all -> 302 Redirect
+[2000-01-01 00:02:33.192] [INFO] [SERVER] [TRACE ENTER] after_request add_pna_header(uri=/favicon.ico, method=GET)
+[2000-01-01 00:02:33.196] [INFO] [SERVER] [TRACE EXIT] after_request add_pna_header(uri=/favicon.ico, method=GET)
+[2000-01-01 00:02:33.212] [INFO] [SERVER] [TRACE ENTER] after_request cleanup_and_cors(uri=/favicon.ico, method=GET)
+[2000-01-01 00:02:33.216] [INFO] [SERVER] [TRACE ENTER] set_allowed_origin_headers (uri=/favicon.ico, method=GET)
+[2000-01-01 00:02:33.232] [INFO] [SERVER] [TRACE ENTER] get_allowed_origin(origin=, uri=/favicon.ico, method=GET)
+[2000-01-01 00:02:33.242] [INFO] [SERVER] [TRACE EXIT] get_allowed_origin(uri=/favicon.ico, method=GET) -> *
+[2000-01-01 00:02:33.246] [INFO] [SERVER] [TRACE EXIT] set_allowed_origin_headers (uri=/favicon.ico, method=GET)
+[2000-01-01 00:02:33.262] [INFO] [SERVER] [TRACE EXIT] after_request cleanup_and_cors(uri=/favicon.ico, method=GET)
+[2000-01-01 00:03:31.622] [INFO] [NETWORK] [TRACE ENTER] handle_async_exception(context={'future': <Task>, 'message': "Task exception wasn't retrieved", 'exception': OSError(-30592, 'MBEDTLS_ERR_SSL_FATAL_ALERT_MESSAGE')})
+[2000-01-01 00:03:31.626] [INFO] [NETWORK] [TRACE EXIT] handle_async_exception (ignored socket reset)
+[2000-01-01 00:03:32.167] [INFO] [SERVER] [TRACE ENTER] process_before_request(uri=/www/config.html, method=GET)
+[2000-01-01 00:03:32.184] [INFO] [POWER_MGR] [TRACE ENTER] PowerManager.notify_activity()
+[2000-01-01 00:03:32.202] [INFO] [POWER_MGR] [TRACE EXIT] PowerManager.notify_activity
+[2000-01-01 00:03:32.205] [INFO] [SERVER] [TRACE EXIT] process_before_request(uri=/www/config.html, method=GET)
+[2000-01-01 00:03:32.222] [INFO] [SERVER] [TRACE ENTER] serve_www(path=config.html)
+[2000-01-01 00:03:32.347] [INFO] [SERVER] [TRACE EXIT] serve_www
+[2000-01-01 00:03:32.357] [INFO] [SERVER] [TRACE ENTER] after_request add_pna_header(uri=/www/config.html, method=GET)
+[2000-01-01 00:03:32.372] [INFO] [SERVER] [TRACE EXIT] after_request add_pna_header(uri=/www/config.html, method=GET)
+[2000-01-01 00:03:32.376] [INFO] [SERVER] [TRACE ENTER] after_request cleanup_and_cors(uri=/www/config.html, method=GET)
+[2000-01-01 00:03:32.392] [INFO] [SERVER] [TRACE ENTER] set_allowed_origin_headers (uri=/www/config.html, method=GET)
+[2000-01-01 00:03:32.402] [INFO] [SERVER] [TRACE ENTER] get_allowed_origin(origin=, uri=/www/config.html, method=GET)
+[2000-01-01 00:03:32.412] [INFO] [SERVER] [TRACE EXIT] get_allowed_origin(uri=/www/config.html, method=GET) -> *
+[2000-01-01 00:03:32.424] [INFO] [SERVER] [TRACE EXIT] set_allowed_origin_headers (uri=/www/config.html, method=GET)
+[2000-01-01 00:03:32.440] [INFO] [SERVER] [TRACE EXIT] after_request cleanup_and_cors(uri=/www/config.html, method=GET)
+[2000-01-01 00:03:33.062] [INFO] [NETWORK] [TRACE ENTER] handle_async_exception(context={'future': <Task>, 'message': "Task exception wasn't retrieved", 'exception': OSError(-30592, 'MBEDTLS_ERR_SSL_FATAL_ALERT_MESSAGE')})
+[2000-01-01 00:03:33.095] [INFO] [NETWORK] [TRACE EXIT] handle_async_exception (ignored socket reset)
+[2000-01-01 00:03:33.675] [INFO] [SERVER] [TRACE ENTER] process_before_request(uri=/api/get-nonce, method=GET)
+[2000-01-01 00:03:33.691] [INFO] [POWER_MGR] [TRACE ENTER] PowerManager.notify_activity()
+[2000-01-01 00:03:33.702] [INFO] [POWER_MGR] [TRACE EXIT] PowerManager.notify_activity
+[2000-01-01 00:03:33.705] [INFO] [SERVER] [TRACE EXIT] process_before_request(uri=/api/get-nonce, method=GET)
+[2000-01-01 00:03:33.722] [INFO] [SERVER] [TRACE ENTER] get_nonce()
+[2000-01-01 00:03:33.726] [INFO] [SECURITY]  Entering generate_nonce
+[2000-01-01 00:03:33.729] [INFO] [SECURITY]  Entering _cleanup_expired
+[2000-01-01 00:03:33.742] [INFO] [SECURITY]  Exiting _cleanup_expired
+[2000-01-01 00:03:33.757] [INFO] [SECURITY]  Exiting generate_nonce: nonce=f0c03b2860ed505b
+[2000-01-01 00:03:33.761] [INFO] [SERVER] [TRACE EXIT] get_nonce
+[2000-01-01 00:03:33.772] [INFO] [SERVER] [TRACE ENTER] after_request add_pna_header(uri=/api/get-nonce, method=GET)
+[2000-01-01 00:03:33.782] [INFO] [SERVER] [TRACE EXIT] after_request add_pna_header(uri=/api/get-nonce, method=GET)
+[2000-01-01 00:03:33.792] [INFO] [SERVER] [TRACE ENTER] after_request cleanup_and_cors(uri=/api/get-nonce, method=GET)
+[2000-01-01 00:03:33.802] [INFO] [SERVER] [TRACE ENTER] set_allowed_origin_headers (uri=/api/get-nonce, method=GET)
+[2000-01-01 00:03:33.812] [INFO] [SERVER] [TRACE ENTER] get_allowed_origin(origin=, uri=/api/get-nonce, method=GET)
+[2000-01-01 00:03:33.822] [INFO] [SERVER] [TRACE EXIT] get_allowed_origin(uri=/api/get-nonce, method=GET) -> *
+[2000-01-01 00:03:33.834] [INFO] [SERVER] [TRACE EXIT] set_allowed_origin_headers (uri=/api/get-nonce, method=GET)
+[2000-01-01 00:03:33.850] [INFO] [SERVER] [TRACE EXIT] after_request cleanup_and_cors(uri=/api/get-nonce, method=GET)
+[2000-01-01 00:03:34.262] [INFO] [NETWORK] [TRACE ENTER] handle_async_exception(context={'future': <Task>, 'message': "Task exception wasn't retrieved", 'exception': OSError(-30592, 'MBEDTLS_ERR_SSL_FATAL_ALERT_MESSAGE')})
+[2000-01-01 00:03:34.266] [INFO] [NETWORK] [TRACE EXIT] handle_async_exception (ignored socket reset)
+[2000-01-01 00:03:34.789] [INFO] [SERVER] [TRACE ENTER] process_before_request(uri=/api/config, method=GET)
+[2000-01-01 00:03:34.804] [INFO] [POWER_MGR] [TRACE ENTER] PowerManager.notify_activity()
+[2000-01-01 00:03:34.822] [INFO] [POWER_MGR] [TRACE EXIT] PowerManager.notify_activity
+[2000-01-01 00:03:34.826] [INFO] [SERVER] [TRACE EXIT] process_before_request(uri=/api/config, method=GET)
+[2000-01-01 00:03:34.842] [INFO] [SERVER] [TRACE ENTER] get_config_api()
+[2000-01-01 00:03:34.845] [INFO] [SECURITY]  Entering verify_upload_auth
+[2000-01-01 00:03:34.849] [INFO] [SECURITY]  Entering decrypt_str
+[2000-01-01 00:03:34.862] [INFO] [SECURITY]  Entering _get_aes_key_and_iv
+[2000-01-01 00:03:34.866] [INFO] [SECURITY]  Exiting _get_aes_key_and_iv
+[2000-01-01 00:03:34.869] [INFO] [SECURITY]  Exiting decrypt_str
+[2000-01-01 00:03:34.874] [INFO] [SECURITY]  Exiting hash_sha256
+[2000-01-01 00:03:34.892] [INFO] [SECURITY] Успешная авторизация (Nonce: f0c03b2860ed505b)
+[2000-01-01 00:03:34.896] [INFO] [SERVER] [TRACE ENTER] safe_decrypt(val_len=28)
+[2000-01-01 00:03:34.900] [INFO] [SECURITY]  Entering decrypt_str
+[2000-01-01 00:03:34.912] [INFO] [SECURITY]  Entering _get_aes_key_and_iv
+[2000-01-01 00:03:34.916] [INFO] [SECURITY]  Exiting _get_aes_key_and_iv
+[2000-01-01 00:03:34.921] [INFO] [SECURITY]  Exiting decrypt_str
+[2000-01-01 00:03:34.924] [INFO] [SERVER] [TRACE EXIT] safe_decrypt
+[2000-01-01 00:03:34.942] [INFO] [SERVER] [TRACE ENTER] safe_decrypt(val_len=28)
+[2000-01-01 00:03:34.944] [INFO] [SECURITY]  Entering decrypt_str
+[2000-01-01 00:03:34.947] [INFO] [SECURITY]  Entering _get_aes_key_and_iv
+[2000-01-01 00:03:34.962] [INFO] [SECURITY]  Exiting _get_aes_key_and_iv
+[2000-01-01 00:03:34.965] [INFO] [SECURITY]  Exiting decrypt_str
+[2000-01-01 00:03:34.968] [INFO] [SERVER] [TRACE EXIT] safe_decrypt
+[2000-01-01 00:03:35.005] [INFO] [SERVER] [TRACE EXIT] get_config_api -> 200 OK
+[2000-01-01 00:03:35.017] [INFO] [SERVER] [TRACE ENTER] after_request add_pna_header(uri=/api/config, method=GET)
+[2000-01-01 00:03:35.032] [INFO] [SERVER] [TRACE EXIT] after_request add_pna_header(uri=/api/config, method=GET)
+[2000-01-01 00:03:35.042] [INFO] [SERVER] [TRACE ENTER] after_request cleanup_and_cors(uri=/api/config, method=GET)
+[2000-01-01 00:03:35.052] [INFO] [SERVER] [TRACE ENTER] set_allowed_origin_headers (uri=/api/config, method=GET)
+[2000-01-01 00:03:35.062] [INFO] [SERVER] [TRACE ENTER] get_allowed_origin(origin=, uri=/api/config, method=GET)
+[2000-01-01 00:03:35.074] [INFO] [SERVER] [TRACE EXIT] get_allowed_origin(uri=/api/config, method=GET) -> *
+[2000-01-01 00:03:35.092] [INFO] [SERVER] [TRACE EXIT] set_allowed_origin_headers (uri=/api/config, method=GET)
+[2000-01-01 00:03:35.108] [INFO] [SERVER] [TRACE EXIT] after_request cleanup_and_cors(uri=/api/config, method=GET)
+[2000-01-01 00:03:39.862] [INFO] [NETWORK] [TRACE ENTER] handle_async_exception(context={'future': <Task>, 'message': "Task exception wasn't retrieved", 'exception': OSError(-30592, 'MBEDTLS_ERR_SSL_FATAL_ALERT_MESSAGE')})
+[2000-01-01 00:03:39.866] [INFO] [NETWORK] [TRACE EXIT] handle_async_exception (ignored socket reset)
+[2000-01-01 00:03:40.428] [INFO] [SERVER] [TRACE ENTER] process_before_request(uri=/www/upload.html, method=GET)
+[2000-01-01 00:03:40.444] [INFO] [POWER_MGR] [TRACE ENTER] PowerManager.notify_activity()
+[2000-01-01 00:03:40.462] [INFO] [POWER_MGR] [TRACE EXIT] PowerManager.notify_activity
+[2000-01-01 00:03:40.465] [INFO] [SERVER] [TRACE EXIT] process_before_request(uri=/www/upload.html, method=GET)
+[2000-01-01 00:03:40.482] [INFO] [SERVER] [TRACE ENTER] serve_www(path=upload.html)
+[2000-01-01 00:03:40.604] [INFO] [SERVER] [TRACE EXIT] serve_www
+[2000-01-01 00:03:40.615] [INFO] [SERVER] [TRACE ENTER] after_request add_pna_header(uri=/www/upload.html, method=GET)
+[2000-01-01 00:03:40.632] [INFO] [SERVER] [TRACE EXIT] after_request add_pna_header(uri=/www/upload.html, method=GET)
+[2000-01-01 00:03:40.642] [INFO] [SERVER] [TRACE ENTER] after_request cleanup_and_cors(uri=/www/upload.html, method=GET)
+[2000-01-01 00:03:40.652] [INFO] [SERVER] [TRACE ENTER] set_allowed_origin_headers (uri=/www/upload.html, method=GET)
+[2000-01-01 00:03:40.664] [INFO] [SERVER] [TRACE ENTER] get_allowed_origin(origin=, uri=/www/upload.html, method=GET)
+[2000-01-01 00:03:40.682] [INFO] [SERVER] [TRACE EXIT] get_allowed_origin(uri=/www/upload.html, method=GET) -> *
+[2000-01-01 00:03:40.686] [INFO] [SERVER] [TRACE EXIT] set_allowed_origin_headers (uri=/www/upload.html, method=GET)
+[2000-01-01 00:03:40.702] [INFO] [SERVER] [TRACE EXIT] after_request cleanup_and_cors(uri=/www/upload.html, method=GET)
+[2000-01-01 00:03:42.532] [INFO] [NETWORK] [TRACE ENTER] handle_async_exception(context={'future': <Task>, 'message': "Task exception wasn't retrieved", 'exception': OSError(-30592, 'MBEDTLS_ERR_SSL_FATAL_ALERT_MESSAGE')})
+[2000-01-01 00:03:42.537] [INFO] [NETWORK] [TRACE EXIT] handle_async_exception (ignored socket reset)
+[2000-01-01 00:03:43.083] [INFO] [SERVER] [TRACE ENTER] process_before_request(uri=/api/info, method=GET)
+[2000-01-01 00:03:43.099] [INFO] [POWER_MGR] [TRACE ENTER] PowerManager.notify_activity()
+[2000-01-01 00:03:43.112] [INFO] [POWER_MGR] [TRACE EXIT] PowerManager.notify_activity
+[2000-01-01 00:03:43.116] [INFO] [SERVER] [TRACE EXIT] process_before_request(uri=/api/info, method=GET)
+[2000-01-01 00:03:43.132] [INFO] [SERVER] [TRACE ENTER] api_info()
+[2000-01-01 00:03:43.136] [INFO] [SERVER] [TRACE ENTER] get_available_space()
+[2000-01-01 00:03:43.140] [INFO] [SERVER] [TRACE ENTER] get_free_space()
+[2000-01-01 00:03:43.548] [INFO] [SERVER] [TRACE EXIT] get_free_space -> 12537856 B
+[2000-01-01 00:03:43.564] [INFO] [SERVER] [TRACE ENTER] get_media_size()
+[2000-01-01 00:03:43.623] [INFO] [SERVER] [TRACE EXIT] get_media_size -> 1216044 B
+[2000-01-01 00:03:43.634] [INFO] [SERVER] [TRACE EXIT] get_available_space -> 13753900 B
+[2000-01-01 00:03:43.670] [INFO] [SERVER] [TRACE EXIT] api_info
+[2000-01-01 00:03:43.675] [INFO] [SERVER] [TRACE ENTER] after_request add_pna_header(uri=/api/info, method=GET)
+[2000-01-01 00:03:43.692] [INFO] [SERVER] [TRACE EXIT] after_request add_pna_header(uri=/api/info, method=GET)
+[2000-01-01 00:03:43.696] [INFO] [SERVER] [TRACE ENTER] after_request cleanup_and_cors(uri=/api/info, method=GET)
+[2000-01-01 00:03:43.712] [INFO] [SERVER] [TRACE ENTER] set_allowed_origin_headers (uri=/api/info, method=GET)
+[2000-01-01 00:03:43.722] [INFO] [SERVER] [TRACE ENTER] get_allowed_origin(origin=, uri=/api/info, method=GET)
+[2000-01-01 00:03:43.725] [INFO] [SERVER] [TRACE EXIT] get_allowed_origin(uri=/api/info, method=GET) -> *
+[2000-01-01 00:03:43.742] [INFO] [SERVER] [TRACE EXIT] set_allowed_origin_headers (uri=/api/info, method=GET)
+[2000-01-01 00:03:43.758] [INFO] [SERVER] [TRACE EXIT] after_request cleanup_and_cors(uri=/api/info, method=GET)
+
+=================== SYSTEM BOOT / POWER ON ===================
+[2000-01-01 00:00:00.573] [INFO] [MAIN] [TRACE ENTER] main()
+[2000-01-01 00:00:00.577] [INFO] [CONFIG] [TRACE ENTER] load_config()
+[2000-01-01 00:00:00.592] [INFO] [CONFIG] Файл config.json уже загружен
+[2000-01-01 00:00:01.074] [INFO] [BOOT_AUDIO] [TRACE ENTER] run_boot_audio()
+[2000-01-01 00:00:01.092] [INFO] [BOOT_AUDIO] === [HAL] Запуск автономной стартовой аудиосистемы по питанию ===
+[2000-01-01 00:00:01.095] [INFO] [BOOT_AUDIO] [TRACE ENTER] StandaloneBootPlayer.__init__()
+[2000-01-01 00:00:01.112] [INFO] [BOOT_AUDIO] [TRACE EXIT] StandaloneBootPlayer.__init__
+[2000-01-01 00:00:01.115] [INFO] [BOOT_AUDIO] [TRACE ENTER] StandaloneBootPlayer.play(filepath=None)
+[2000-01-01 00:00:01.141] [INFO] [AUDIO_UTILS] [TRACE ENTER] play_audio_track(mode=boot, filepath=None, ibuf=16384)
+[2000-01-01 00:00:01.161] [INFO] [AUDIO_UTILS] Открытие аудиофайла /media/bell.wav [BOOT MODE]...
+[2000-01-01 00:00:01.172] [INFO] [AUDIO_UTILS] Пины I2S: BCK=15, WS=16, SD=17, ID=0
+[2000-01-01 00:00:01.192] [INFO] [AUDIO_UTILS] Параметры сессии: повторов=2, лимит=20s, fade=2000ms, resume=True, start_pos=2347052B (36.67s)
+[2000-01-01 00:00:01.195] [INFO] [AUDIO_UTILS] Запуск итерации проигрывания 1/2...
+[2000-01-01 00:00:01.212] [INFO] [AUDIO_UTILS] [TRACE ENTER] stream_wav(start_pos_bytes=2347052, start_pos_sec=36.67, max_ms=20000, fade_ms=2000)
+[2000-01-01 00:00:01.215] [INFO] [AUDIO_UTILS] [TRACE ENTER] parse_wav_header()
+[2000-01-01 00:00:01.232] [INFO] [AUDIO_UTILS] [TRACE EXIT] parse_wav_header -> channels=1, rate=32000, bits=16, data_size=3264000, data_offset=44
+[2000-01-01 00:00:01.242] [INFO] [AUDIO_UTILS] Параметры WAV: 32000 Hz, 16 bit, channels=1, data=3264000 B
+[2000-01-01 00:00:01.252] [INFO] [AUDIO_UTILS] [TRACE ENTER] init_hardware_i2s(rate=32000, bits=16, channels=2, ibuf=16384, pins=(15,16,17,0))
+[2000-01-01 00:00:01.272] [INFO] [AUDIO_UTILS] Конфигурирование I2S (Rate=32000Hz, Bits=16, Format=1, Buffer=16384B)...
+[2000-01-01 00:00:01.291] [INFO] [AUDIO_UTILS] [TRACE EXIT] init_hardware_i2s
+[2000-01-01 00:00:01.302] [INFO] [AUDIO_UTILS] Возобновление WAV с позиции 2347052 B / 36.67 сек
+[2000-01-01 00:00:15.642] [INFO] [AUDIO_UTILS] Достигнут конец PCM-данных (data_size). Завершение проигрывания.
+[2000-01-01 00:00:15.645] [INFO] [AUDIO_UTILS] [TRACE EXIT] stream_wav -> True
+[2000-01-01 00:00:15.662] [INFO] [AUDIO_UTILS] Запуск итерации проигрывания 2/2...
+[2000-01-01 00:00:15.682] [INFO] [AUDIO_UTILS] [TRACE ENTER] stream_wav(start_pos_bytes=0, start_pos_sec=0.0, max_ms=20000, fade_ms=2000)
+[2000-01-01 00:00:15.685] [INFO] [AUDIO_UTILS] [TRACE ENTER] parse_wav_header()
+[2000-01-01 00:00:15.702] [INFO] [AUDIO_UTILS] [TRACE EXIT] parse_wav_header -> channels=1, rate=32000, bits=16, data_size=3264000, data_offset=44
+[2000-01-01 00:00:15.712] [INFO] [AUDIO_UTILS] Параметры WAV: 32000 Hz, 16 bit, channels=1, data=3264000 B
+[2000-01-01 00:00:15.752] [INFO] [AUDIO_UTILS] [TRACE ENTER] init_hardware_i2s(rate=32000, bits=16, channels=2, ibuf=16384, pins=(15,16,17,0))
+[2000-01-01 00:00:15.762] [INFO] [AUDIO_UTILS] Конфигурирование I2S (Rate=32000Hz, Bits=16, Format=1, Buffer=16384B)...
+[2000-01-01 00:00:15.781] [INFO] [AUDIO_UTILS] [TRACE EXIT] init_hardware_i2s
+[2000-01-01 00:00:21.172] [INFO] [AUDIO_UTILS] Достигнут лимит времени воспроизведения (20000 ms)
+[2000-01-01 00:00:21.175] [INFO] [AUDIO_UTILS] [TRACE EXIT] stream_wav -> True
+[2000-01-01 00:00:21.192] [INFO] [AUDIO_UTILS] [TRACE ENTER] save_position_to_config(pos_bytes=344108, pos_sec=5.376)
+[2000-01-01 00:00:21.352] [INFO] [AUDIO_UTILS] Сохранена позиция воспроизведения в config.json: 344108 B (5.38 сек)
+[2000-01-01 00:00:21.355] [INFO] [AUDIO_UTILS] [TRACE EXIT] save_position_to_config
+[2000-01-01 00:00:21.372] [INFO] [AUDIO_UTILS] [TRACE ENTER] deinit_hardware_i2s()
+[2000-01-01 00:00:21.375] [INFO] [AUDIO_UTILS] [TRACE EXIT] deinit_hardware_i2s
+[2000-01-01 00:00:21.392] [INFO] [AUDIO_UTILS] Воспроизведение аудиофайла полностью завершено, I2S освобожден.
+[2000-01-01 00:00:21.402] [INFO] [AUDIO_UTILS] [TRACE EXIT] play_audio_track -> True
+[2000-01-01 00:00:21.405] [INFO] [BOOT_AUDIO] [TRACE EXIT] StandaloneBootPlayer.play -> True
+[2000-01-01 00:00:21.422] [INFO] [BOOT_AUDIO] [TRACE EXIT] run_boot_audio -> completed
+[2000-01-01 00:00:21.442] [INFO] [MAIN] Загрузка тяжелых сетевых и асинхронных модулей...
+[2000-01-01 00:00:21.759] [INFO] [SECURITY]  Entering __init__ SecurityManager(ttl_seconds=60)
+[2000-01-01 00:00:21.774] [INFO] [SECURITY]  Exiting __init__ SecurityManager: TTL for Nonce = 60 seconds
+[2000-01-01 00:00:21.855] [INFO] [POWER_MGR] [TRACE ENTER] PowerManager.__init__(pin_num=4)
+[2000-01-01 00:00:21.872] [INFO] [POWER_MGR] [TRACE EXIT] PowerManager.__init__
+[2000-01-01 00:00:22.975] [INFO] [AUDIO] [TRACE ENTER] AudioPlayer.__init__()
+[2000-01-01 00:00:22.984] [INFO] [AUDIO] [TRACE EXIT] AudioPlayer.__init__
+[2000-01-01 00:00:22.992] [INFO] [MAIN] Инициализация сетевых интерфейсов и веб-сервера Microdot...
+[2000-01-01 00:00:23.002] [INFO] [NETWORK] [TRACE ENTER] setup_network()
+[2000-01-01 00:00:23.012] [INFO] [NETWORK] Установлено сетевое имя устройства (mDNS): bell555
+[2000-01-01 00:00:24.024] [WARNING] [NETWORK] [TRACE ENTER] initWifiMode
+[2000-01-01 00:00:24.183] [INFO] [NETWORK] [Enter] find_best_network выбора оптимальной Wi-Fi сети...
+[2000-01-01 00:00:24.202] [INFO] [NETWORK] [Enter] get_network_list Сканирование Wi-Fi сети...
+[2000-01-01 00:00:26.742] [INFO] [NETWORK] get_network_list Сканирование Wi-Fi сети завершено. Найдено [(b'MyHome_555', b'4\n3d\x89\x00', 6, -51, 3, False), (b'BASJA8', b'\xb0\x1fG@\xe03', 1, -76, 3, False), (b'', b'\xaan\x84%~\xfc', 5, -77, 3, False), (b'MyHomeMain', b'\xa8n\x84\x95~\xfc', 5, -80, 3, False), (b'DIRECT-BC-HP DeskJet 2800 series', b',X\xb9\xa7\xd2\xbd', 6, -85, 3, False), (b'Home555', b'\xd45\x1dQ\x154', 11, -86, 3, False)] сетей.
+[2000-01-01 00:00:26.782] [INFO] [NETWORK] [Exit] get_network_list Сканирование Wi-Fi сети: [{'rssi': -51, 'authmode': 3, 'ssid': 'MyHome_555'}, {'rssi': -76, 'authmode': 3, 'ssid': 'BASJA8'}, {'rssi': -80, 'authmode': 3, 'ssid': 'MyHomeMain'}, {'rssi': -85, 'authmode': 3, 'ssid': 'DIRECT-BC-HP DeskJet 2800 series'}, {'rssi': -86, 'authmode': 3, 'ssid': 'Home555'}]
+[2000-01-01 00:00:26.802] [INFO] [NETWORK] find_best_network Сканированная сеть: '{'ssid': 'MyHome_555', 'password': 'ENC:GVzJ8MGTeGtInaizDig8+w=='}' (RSSI: -51 dBm).
+[2000-01-01 00:00:26.812] [INFO] [NETWORK] find_best_network Найдена сеть: 'MyHome_555'. Попытка подключения...
+[2000-01-01 00:00:26.842] [INFO] [SECURITY]  Entering decrypt_str
+[2000-01-01 00:00:26.845] [INFO] [SECURITY]  Entering _get_aes_key_and_iv
+[2000-01-01 00:00:26.854] [INFO] [SECURITY]  Exiting _get_aes_key_and_iv
+[2000-01-01 00:00:26.858] [INFO] [SECURITY]  Exiting decrypt_str
+[2000-01-01 00:00:26.872] [INFO] [NETWORK] [Exit] find_best_network выбора оптимальной Wi-Fi сети: MyHome_555
+[2000-01-01 00:00:26.877] [INFO] [NETWORK] initWifiMode Подключение к роутеру 'MyHome_555'...
+[2000-01-01 00:00:28.992] [INFO] [NETWORK] initWifiMode Подключено к роутеру! Выделенный IP: 192.168.0.190
+[2000-01-01 00:00:28.995] [INFO] [NETWORK] [TRACE EXIT] initWifiMode -> STA, 192.168.0.190
+[2000-01-01 00:00:29.012] [INFO] [NETWORK] [TRACE Exit] setup_network() -> 'STA', '192.168.0.190'
+[2000-01-01 00:00:29.016] [INFO] [POWER_MGR] [TRACE ENTER] PowerManager.start_hardware_timeout(mode=STA, timeout_sec=10)
+[2000-01-01 00:00:29.032] [INFO] [POWER_MGR] [TRACE ENTER] PowerManager.set_timeout(timeout_sec=10)
+[2000-01-01 00:00:29.035] [INFO] [POWER_MGR] [TRACE ENTER] PowerManager.notify_activity()
+[2000-01-01 00:00:29.052] [INFO] [POWER_MGR] [TRACE EXIT] PowerManager.notify_activity
+[2000-01-01 00:00:29.055] [INFO] [INDICATOR] [TRACE ENTER] set_led_mode(mode=police)
+[2000-01-01 00:00:29.072] [INFO] [INDICATOR] [INDICATOR] Режим индикации успешно переключен на: 'police'
+[2000-01-01 00:00:29.075] [INFO] [INDICATOR] [TRACE EXIT] set_led_mode
+[2000-01-01 00:00:29.092] [INFO] [POWER_MGR] [POWER_MGR] Новый таймаут: 10 сек.
+[2000-01-01 00:00:29.094] [INFO] [POWER_MGR] [TRACE EXIT] PowerManager.set_timeout
+[2000-01-01 00:00:29.112] [INFO] [POWER_MGR] [TRACE EXIT] PowerManager.start_hardware_timeout
+[2000-01-01 00:00:29.162] [INFO] [SERVER] [TRACE ENTER] init_server(config_keys=['repeat_count', 'i2s_ws_pin', 'server_host', 'i2s_bck_pin', 'smart_timeout_sec', 'max_file_size', 'hostname', 'boot_mode', 'last_play_pos_bytes', 'wifi_ssid', 'ap_ssid', 'cert_path', 'i2s_id', 'flush_log_file', 'server_port', 'fade_out_ms', 'allowed_origins', 'i2s_sd_pin', 'html_index_path', 'last_play_pos_sec', 'media_dir', 'wifi_password', 'key_path', 'ap_ip', 'allowed_extensions', 'upload_password', 'resume_playback', 'wifi_networks', 'encrypted_fields', 'target_filename', 'ap_password', 'max_play_duration_sec'])
+[2000-01-01 00:00:29.182] [INFO] [SECURITY]  Entering __init__ SecurityManager(ttl_seconds=60)
+[2000-01-01 00:00:29.184] [INFO] [SECURITY]  Exiting __init__ SecurityManager: TTL for Nonce = 60 seconds
+[2000-01-01 00:00:29.190] [INFO] [SERVER] [TRACE EXIT] init_server -> app ready
+[2000-01-01 00:00:29.202] [INFO] [MAIN] Запуск Microdot веб-сервера на 0.0.0.0:443...
+[2000-01-01 00:00:29.212] [INFO] [MAIN] Доступ к панели управления по IP: https://192.168.0.190
+[2000-01-01 00:00:29.232] [INFO] [MAIN] Доступ к панели управления по имени: https://bell555 или https://bell555.local
+[2000-01-01 00:00:29.236] [INFO] [SERVER] [TRACE ENTER] start_server(host=0.0.0.0, port=443)
+[2000-01-01 00:00:29.258] [INFO] [SERVER] Запуск Microdot HTTPS на 0.0.0.0:443...
+[2000-01-01 00:00:29.274] [INFO] [INDICATOR] [TRACE ENTER] start_led_loop(pin_num=48)
+[2000-01-01 00:00:39.112] [INFO] [POWER_MGR] [SMART TIMEOUT END] Выход с обесточиванием системы (10 сек без активности)...
+[2000-01-01 00:00:39.115] [INFO] [POWER_MGR] [TRACE ENTER] PowerManager.shutdown()
+[2000-01-01 00:00:39.132] [INFO] [POWER_MGR] [RELAY OFF] Отключение реле: Система обесточивается (GPIO4 = LOW)
+[2000-01-01 00:00:39.235] [INFO] [POWER_MGR] ================= [TRACE EXIT] PowerManager.shutdown =================
